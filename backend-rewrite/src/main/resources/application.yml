@@ -10,6 +10,11 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+security:
+  jwt:
+    secret: replace-with-a-32-byte-minimum-secret-key
+    access-token-ttl: 1h
+
 management:
   endpoints:
     web:
