@@ -1,0 +1,19 @@
+CREATE TABLE IF NOT EXISTS app_user (
+    id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS app_role (
+    id BIGSERIAL PRIMARY KEY,
+    role_code VARCHAR(50) NOT NULL UNIQUE,
+    role_name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS app_user_role (
+    user_id BIGINT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+    role_id BIGINT NOT NULL REFERENCES app_role(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, role_id)
+);
