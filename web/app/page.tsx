@@ -14,6 +14,9 @@ export default async function HomePage() {
           <Link className="btn" href="/login">
             登录页面
           </Link>
+          <Link className="btn-secondary" href="/register">
+            注册页面
+          </Link>
           <Link className="btn-secondary" href="/dashboard">
             Dashboard
           </Link>

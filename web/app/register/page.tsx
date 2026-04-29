@@ -1,36 +1,34 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { login } from '@/lib/api';
+import { register } from '@/lib/api';
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      router.replace('/dashboard');
-    }
-  }, [router]);
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (password !== confirmPassword) {
+      setError('两次密码不一致');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      const result = await login({ username, password });
-      localStorage.setItem('access_token', result.accessToken);
-      localStorage.setItem('token_type', result.tokenType);
-      router.push('/dashboard');
+      await register({ username, password });
+      router.push('/login');
     } catch (submitError) {
-      const message = submitError instanceof Error ? submitError.message : '登录失败';
+      const message = submitError instanceof Error ? submitError.message : '注册失败';
       setError(message);
     } finally {
       setLoading(false);
@@ -41,8 +39,8 @@ export default function LoginPage() {
     <main className="page-wrap page-center">
       <section className="card space-y-6">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight">登录</h1>
-          <p className="hint">使用后端 /api/v1/auth/login 接口获取 JWT。</p>
+          <h1 className="text-2xl font-bold tracking-tight">注册</h1>
+          <p className="hint">创建账号后可使用登录页获取 JWT。</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -73,17 +71,31 @@ export default function LoginPage() {
             />
           </div>
 
+          <div>
+            <label className="label" htmlFor="confirm-password">
+              确认密码
+            </label>
+            <input
+              id="confirm-password"
+              className="input"
+              type="password"
+              value={confirmPassword}
+              onChange={event => setConfirmPassword(event.target.value)}
+              required
+            />
+          </div>
+
           {error && <p className="error">{error}</p>}
 
           <button className="btn w-full" type="submit" disabled={loading}>
-            {loading ? '登录中...' : '登录'}
+            {loading ? '注册中...' : '注册'}
           </button>
         </form>
 
         <p className="hint">
-          还没有账号？
-          <Link className="ml-2 text-brand hover:underline" href="/register">
-            去注册
+          已有账号？
+          <Link className="ml-2 text-brand hover:underline" href="/login">
+            去登录
           </Link>
         </p>
       </section>

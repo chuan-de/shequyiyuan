@@ -1,11 +1,13 @@
 package com.hospital.auth.service;
 
 import com.hospital.auth.dto.AuthResponse;
+import com.hospital.auth.dto.CurrentUserResponse;
 import com.hospital.auth.dto.LoginRequest;
 import com.hospital.auth.dto.RegisterRequest;
 import com.hospital.auth.security.JwtProperties;
 import com.hospital.auth.security.JwtService;
 import com.hospital.user.service.AuthUserDetailsService;
+import java.util.List;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -84,5 +86,29 @@ public class AuthService {
             .param("userId", userId)
             .param("roleId", userRoleId)
             .update();
+    }
+
+    public CurrentUserResponse currentUser(String username) {
+        AuthUserDetailsService.AuthUserRow row = jdbcClient.sql("""
+                SELECT id, username, password_hash, enabled
+                FROM app_user
+                WHERE username = :username
+            """)
+            .param("username", username)
+            .query(AuthUserDetailsService.AuthUserRow.class)
+            .optional()
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        List<String> roles = jdbcClient.sql("""
+                SELECT r.role_code
+                FROM app_user_role ur
+                JOIN app_role r ON ur.role_id = r.id
+                WHERE ur.user_id = :userId
+            """)
+            .param("userId", row.id())
+            .query(String.class)
+            .list();
+
+        return new CurrentUserResponse(row.username(), row.enabled(), roles);
     }
 }
