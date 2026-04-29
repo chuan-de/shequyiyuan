@@ -9,11 +9,11 @@ import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -27,19 +27,18 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request);
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 
     @PostMapping("/register")
-    @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
-        return Map.of("message", "registered");
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "registered"));
     }
 
     @GetMapping("/me")
-    public CurrentUserResponse me(Principal principal) {
-        return authService.currentUser(principal.getName());
+    public ResponseEntity<CurrentUserResponse> me(Principal principal) {
+        return ResponseEntity.ok(authService.currentUser(principal.getName()));
     }
 }

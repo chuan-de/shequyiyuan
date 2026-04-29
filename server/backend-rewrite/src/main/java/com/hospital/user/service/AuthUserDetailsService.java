@@ -1,7 +1,9 @@
 package com.hospital.user.service;
 
+import com.hospital.auth.entity.AppUser;
+import com.hospital.auth.repository.AppUserRepository;
+import com.hospital.auth.repository.AppUserRoleRepository;
 import java.util.List;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
@@ -13,45 +15,29 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthUserDetailsService implements UserDetailsService {
 
-    private final JdbcClient jdbcClient;
+    private final AppUserRepository appUserRepository;
+    private final AppUserRoleRepository appUserRoleRepository;
 
-    public AuthUserDetailsService(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    public AuthUserDetailsService(AppUserRepository appUserRepository, AppUserRoleRepository appUserRoleRepository) {
+        this.appUserRepository = appUserRepository;
+        this.appUserRoleRepository = appUserRoleRepository;
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        AuthUserRow userRow = jdbcClient.sql("""
-                SELECT id, username, password_hash, enabled
-                FROM app_user
-                WHERE username = :username
-            """)
-            .param("username", username)
-            .query(AuthUserRow.class)
-            .optional()
+        AppUser user = appUserRepository.findByUsername(username)
             .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-        List<GrantedAuthority> authorities = jdbcClient.sql("""
-                SELECT r.role_code
-                FROM app_user_role ur
-                JOIN app_role r ON ur.role_id = r.id
-                WHERE ur.user_id = :userId
-            """)
-            .param("userId", userRow.id())
-            .query(String.class)
-            .list()
+        List<GrantedAuthority> authorities = appUserRoleRepository.findByIdUserId(user.getId())
             .stream()
-            .map(code -> new SimpleGrantedAuthority("ROLE_" + code))
+            .map(link -> new SimpleGrantedAuthority("ROLE_" + link.getRole().getRoleCode()))
             .map(GrantedAuthority.class::cast)
             .toList();
 
-        return User.withUsername(userRow.username())
-            .password(userRow.passwordHash())
+        return User.withUsername(user.getUsername())
+            .password(user.getPasswordHash())
             .authorities(authorities)
-            .disabled(!userRow.enabled())
+            .disabled(!user.getEnabled())
             .build();
-    }
-
-    public record AuthUserRow(Long id, String username, String passwordHash, Boolean enabled) {
     }
 }

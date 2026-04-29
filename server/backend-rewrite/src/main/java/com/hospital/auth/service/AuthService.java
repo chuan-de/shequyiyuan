@@ -4,11 +4,16 @@ import com.hospital.auth.dto.AuthResponse;
 import com.hospital.auth.dto.CurrentUserResponse;
 import com.hospital.auth.dto.LoginRequest;
 import com.hospital.auth.dto.RegisterRequest;
+import com.hospital.auth.entity.AppRole;
+import com.hospital.auth.entity.AppUser;
+import com.hospital.auth.entity.AppUserRole;
+import com.hospital.auth.repository.AppRoleRepository;
+import com.hospital.auth.repository.AppUserRepository;
+import com.hospital.auth.repository.AppUserRoleRepository;
 import com.hospital.auth.security.JwtProperties;
 import com.hospital.auth.security.JwtService;
 import com.hospital.user.service.AuthUserDetailsService;
 import java.util.List;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,7 +29,9 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
-    private final JdbcClient jdbcClient;
+    private final AppUserRepository appUserRepository;
+    private final AppRoleRepository appRoleRepository;
+    private final AppUserRoleRepository appUserRoleRepository;
 
     public AuthService(
         AuthenticationManager authenticationManager,
@@ -32,14 +39,18 @@ public class AuthService {
         PasswordEncoder passwordEncoder,
         JwtService jwtService,
         JwtProperties jwtProperties,
-        JdbcClient jdbcClient
+        AppUserRepository appUserRepository,
+        AppRoleRepository appRoleRepository,
+        AppUserRoleRepository appUserRoleRepository
     ) {
         this.authenticationManager = authenticationManager;
         this.authUserDetailsService = authUserDetailsService;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
-        this.jdbcClient = jdbcClient;
+        this.appUserRepository = appUserRepository;
+        this.appRoleRepository = appRoleRepository;
+        this.appUserRoleRepository = appUserRoleRepository;
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -59,56 +70,32 @@ public class AuthService {
 
     @Transactional
     public void register(RegisterRequest request) {
-        Integer existing = jdbcClient.sql("SELECT COUNT(1) FROM app_user WHERE username = :username")
-            .param("username", request.username())
-            .query(Integer.class)
-            .single();
-        if (existing != null && existing > 0) {
+        if (appUserRepository.existsByUsername(request.username())) {
             throw new IllegalArgumentException("Username already exists");
         }
 
-        Long userId = jdbcClient.sql("""
-                INSERT INTO app_user (username, password_hash, enabled)
-                VALUES (:username, :passwordHash, true)
-                RETURNING id
-            """)
-            .param("username", request.username())
-            .param("passwordHash", passwordEncoder.encode(request.password()))
-            .query(Long.class)
-            .single();
+        AppUser user = new AppUser();
+        user.setUsername(request.username());
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setEnabled(true);
+        AppUser savedUser = appUserRepository.save(user);
 
-        Long userRoleId = jdbcClient.sql("SELECT id FROM app_role WHERE role_code = 'USER'")
-            .query(Long.class)
-            .optional()
+        AppRole userRole = appRoleRepository.findByRoleCode("USER")
             .orElseThrow(() -> new IllegalStateException("Missing USER role seed data"));
 
-        jdbcClient.sql("INSERT INTO app_user_role (user_id, role_id) VALUES (:userId, :roleId)")
-            .param("userId", userId)
-            .param("roleId", userRoleId)
-            .update();
+        appUserRoleRepository.save(new AppUserRole(savedUser, userRole));
     }
 
+    @Transactional(readOnly = true)
     public CurrentUserResponse currentUser(String username) {
-        AuthUserDetailsService.AuthUserRow row = jdbcClient.sql("""
-                SELECT id, username, password_hash, enabled
-                FROM app_user
-                WHERE username = :username
-            """)
-            .param("username", username)
-            .query(AuthUserDetailsService.AuthUserRow.class)
-            .optional()
+        AppUser user = appUserRepository.findByUsername(username)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        List<String> roles = jdbcClient.sql("""
-                SELECT r.role_code
-                FROM app_user_role ur
-                JOIN app_role r ON ur.role_id = r.id
-                WHERE ur.user_id = :userId
-            """)
-            .param("userId", row.id())
-            .query(String.class)
-            .list();
+        List<String> roles = appUserRoleRepository.findByIdUserId(user.getId())
+            .stream()
+            .map(link -> link.getRole().getRoleCode())
+            .toList();
 
-        return new CurrentUserResponse(row.username(), row.enabled(), roles);
+        return new CurrentUserResponse(user.getUsername(), user.getEnabled(), roles);
     }
 }
