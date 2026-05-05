@@ -1,10 +1,5 @@
 import { ReactNode } from 'react';
 
-type CardProps = {
-  children: ReactNode;
-  className?: string;
-};
-
-export function Card({ children, className = '' }: CardProps) {
+export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <section className={`card ${className}`.trim()}>{children}</section>;
 }
