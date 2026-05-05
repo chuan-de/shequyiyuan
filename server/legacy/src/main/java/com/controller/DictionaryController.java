@@ -58,7 +58,7 @@ public class DictionaryController {
     @Autowired
     private QiantaiService qiantaiService;
     @Autowired
-    private YishengService yishengService;
+    private DoctorService yishengService;
 
 
     /**

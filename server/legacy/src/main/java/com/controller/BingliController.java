@@ -55,7 +55,7 @@ public class BingliController {
 
     //级联表service
     @Autowired
-    private YishengService yishengService;
+    private DoctorService yishengService;
     @Autowired
     private YonghuService yonghuService;
 
@@ -105,7 +105,7 @@ public class BingliController {
             BeanUtils.copyProperties( bingli , view );//把实体数据重构到view中
 
                 //级联表
-                YishengEntity yisheng = yishengService.selectById(bingli.getYishengId());
+                DoctorEntity yisheng = yishengService.selectById(bingli.getYishengId());
                 if(yisheng != null){
                     BeanUtils.copyProperties( yisheng , view ,new String[]{ "id", "createTime", "insertTime", "updateTime"});//把级联的数据添加到view中,并排除id和创建时间字段
                     view.setYishengId(yisheng.getId());

@@ -12,17 +12,17 @@ import com.utils.Query;
 import org.springframework.web.context.ContextLoader;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
-import com.dao.YishengDao;
-import com.entity.YishengEntity;
-import com.service.YishengService;
-import com.entity.view.YishengView;
+import com.dao.DoctorDao;
+import com.entity.DoctorEntity;
+import com.service.DoctorService;
+import com.entity.view.DoctorView;
 
 /**
  * 医生 服务实现类
  */
 @Service("yishengService")
 @Transactional
-public class YishengServiceImpl extends ServiceImpl<YishengDao, YishengEntity> implements YishengService {
+public class DoctorServiceImpl extends ServiceImpl<DoctorDao, DoctorEntity> implements DoctorService {
 
     @Override
     public PageUtils queryPage(Map<String,Object> params) {
@@ -30,7 +30,7 @@ public class YishengServiceImpl extends ServiceImpl<YishengDao, YishengEntity> i
             params.put("page","1");
             params.put("limit","10");
         }
-        Page<YishengView> page =new Query<YishengView>(params).getPage();
+        Page<DoctorView> page =new Query<DoctorView>(params).getPage();
         page.setRecords(baseMapper.selectListView(page,params));
         return new PageUtils(page);
     }

@@ -60,7 +60,7 @@ public class JiuzhenController {
     @Autowired
     private QiantaiService qiantaiService;
     @Autowired
-    private YishengService yishengService;
+    private DoctorService yishengService;
 
 
     /**

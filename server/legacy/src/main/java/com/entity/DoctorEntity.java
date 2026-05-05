@@ -1,109 +1,136 @@
-package com.entity.vo;
+package com.entity;
 
-import com.entity.YishengEntity;
-import com.baomidou.mybatisplus.annotations.TableField;
+import com.baomidou.mybatisplus.annotations.TableId;
 import com.baomidou.mybatisplus.annotations.TableName;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import java.util.Date;
-import org.springframework.format.annotation.DateTimeFormat;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.lang.reflect.InvocationTargetException;
 
 import java.io.Serializable;
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.format.annotation.DateTimeFormat;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import org.apache.commons.beanutils.BeanUtils;
+import com.baomidou.mybatisplus.annotations.TableField;
+import com.baomidou.mybatisplus.enums.FieldFill;
+import com.baomidou.mybatisplus.enums.IdType;
 
 /**
  * 医生
- * 手机端接口返回实体辅助类
- * （主要作用去除一些不必要的字段）
+ *
+ * @author 
+ * @email
  */
 @TableName("yisheng")
-public class YishengVO implements Serializable {
+public class DoctorEntity<T> implements Serializable {
     private static final long serialVersionUID = 1L;
+
+
+	public DoctorEntity() {
+
+	}
+
+	public DoctorEntity(T t) {
+		try {
+			BeanUtils.copyProperties(this, t);
+		} catch (IllegalAccessException | InvocationTargetException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 
 
     /**
      * 主键
      */
-
+    @TableId(type = IdType.AUTO)
     @TableField(value = "id")
+
     private Integer id;
 
 
     /**
      * 工号
      */
-
     @TableField(value = "yisheng_uuid_number")
+
     private String yishengUuidNumber;
 
 
     /**
      * 账户
      */
-
     @TableField(value = "username")
+
     private String username;
 
 
     /**
      * 密码
      */
-
     @TableField(value = "password")
+
     private String password;
 
 
     /**
      * 医生姓名
      */
-
     @TableField(value = "yisheng_name")
+
     private String yishengName;
 
 
     /**
      * 头像
      */
-
     @TableField(value = "yisheng_photo")
+
     private String yishengPhoto;
 
 
     /**
      * 性别
      */
-
     @TableField(value = "sex_types")
+
     private Integer sexTypes;
 
 
     /**
      * 联系方式
      */
-
     @TableField(value = "yisheng_phone")
+
     private String yishengPhone;
 
 
     /**
      * 医生身份证号
      */
-
     @TableField(value = "yisheng_id_number")
+
     private String yishengIdNumber;
 
 
     /**
      * 邮箱
      */
-
     @TableField(value = "yisheng_email")
+
     private String yishengEmail;
 
 
     /**
      * 假删
      */
-
     @TableField(value = "yisheng_delete")
+
     private Integer yishengDelete;
 
 
@@ -112,8 +139,8 @@ public class YishengVO implements Serializable {
      */
     @JsonFormat(locale="zh", timezone="GMT+8", pattern="yyyy-MM-dd HH:mm:ss")
 	@DateTimeFormat
+    @TableField(value = "create_time",fill = FieldFill.INSERT)
 
-    @TableField(value = "create_time")
     private Date createTime;
 
 
@@ -298,4 +325,21 @@ public class YishengVO implements Serializable {
         this.createTime = createTime;
     }
 
+    @Override
+    public String toString() {
+        return "Yisheng{" +
+            "id=" + id +
+            ", yishengUuidNumber=" + yishengUuidNumber +
+            ", username=" + username +
+            ", password=" + password +
+            ", yishengName=" + yishengName +
+            ", yishengPhoto=" + yishengPhoto +
+            ", sexTypes=" + sexTypes +
+            ", yishengPhone=" + yishengPhone +
+            ", yishengIdNumber=" + yishengIdNumber +
+            ", yishengEmail=" + yishengEmail +
+            ", yishengDelete=" + yishengDelete +
+            ", createTime=" + createTime +
+        "}";
+    }
 }
