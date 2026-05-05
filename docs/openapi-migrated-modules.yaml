@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Shequyiyuan Migrated Modules API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     覆盖当前已迁移模块（认证、健康检查、字典）的请求参数、响应结构与标准错误码。
 servers:
@@ -141,6 +141,39 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalError'
+
+  /api/v1/medications:
+    get:
+      tags: [medication]
+      summary: 药品列表
+      security: [{ bearerAuth: [] }]
+      responses: {'200': {description: 查询成功}}
+    post:
+      tags: [medication]
+      summary: 新增药品
+      security: [{ bearerAuth: [] }]
+      responses: {'200': {description: 新增成功}, '400': {$ref: '#/components/responses/ValidationError'}, '403': {$ref: '#/components/responses/ForbiddenError'}}
+  /api/v1/medications/{id}:
+    get: {tags: [medication], summary: 药品详情, security: [{ bearerAuth: [] }], responses: {'200': {description: 查询成功}, '404': {$ref: '#/components/responses/NotFoundError'}}}
+    put: {tags: [medication], summary: 编辑药品, security: [{ bearerAuth: [] }], responses: {'200': {description: 更新成功}}}
+  /api/v1/medications/{id}/status:
+    patch: {tags: [medication], summary: 药品状态变更, security: [{ bearerAuth: [] }], responses: {'200': {description: 状态变更成功}}}
+  /api/v1/family-doctors:
+    get: {tags: [familyDoctor], summary: 家庭医生签约列表, security: [{ bearerAuth: [] }], responses: {'200': {description: 查询成功}}}
+    post: {tags: [familyDoctor], summary: 新增签约, security: [{ bearerAuth: [] }], responses: {'200': {description: 新增成功}}}
+  /api/v1/family-doctors/{id}:
+    get: {tags: [familyDoctor], summary: 签约详情, security: [{ bearerAuth: [] }], responses: {'200': {description: 查询成功}}}
+    put: {tags: [familyDoctor], summary: 编辑签约, security: [{ bearerAuth: [] }], responses: {'200': {description: 更新成功}}}
+  /api/v1/family-doctors/{id}/status:
+    patch: {tags: [familyDoctor], summary: 签约状态变更, security: [{ bearerAuth: [] }], responses: {'200': {description: 状态变更成功}}}
+  /api/v1/configs:
+    get: {tags: [config], summary: 配置列表, security: [{ bearerAuth: [] }], responses: {'200': {description: 查询成功}}}
+    post: {tags: [config], summary: 新增配置, security: [{ bearerAuth: [] }], responses: {'200': {description: 新增成功}}}
+  /api/v1/configs/{id}:
+    get: {tags: [config], summary: 配置详情, security: [{ bearerAuth: [] }], responses: {'200': {description: 查询成功}}}
+    put: {tags: [config], summary: 编辑配置, security: [{ bearerAuth: [] }], responses: {'200': {description: 更新成功}}}
+  /api/v1/configs/{id}/status:
+    patch: {tags: [config], summary: 配置状态变更, security: [{ bearerAuth: [] }], responses: {'200': {description: 状态变更成功}}}
 components:
   securitySchemes:
     bearerAuth:
