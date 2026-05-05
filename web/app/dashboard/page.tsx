@@ -6,43 +6,29 @@ import { CurrentUserResponse, currentUser } from '@/lib/api';
 import { LinkButton } from '@/components/ui/button';
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const [tokenPreview, setTokenPreview] = useState('');
-  const [profile, setProfile] = useState<CurrentUserResponse | null>(null);
-  const [error, setError] = useState('');
+  const { user, tokenPreview, loading } = useRequireAuth();
 
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      router.replace('/login');
-      return;
-    }
-
-    setTokenPreview(`${token.slice(0, 40)}...`);
-
-    currentUser(token)
-      .then(setProfile)
-      .catch(() => {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('token_type');
-        setError('登录状态已失效，请重新登录');
-        router.replace('/login');
-      });
-  }, [router]);
+  if (loading) {
+    return (
+      <AppShell user={null}>
+        <Card>加载中...</Card>
+      </AppShell>
+    );
+  }
 
   return (
-    <main className="page-wrap page-center">
-      <section className="card space-y-4">
+    <AppShell user={user}>
+      <Card className="space-y-4">
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="hint">已完成前后端认证联调（login/register/me）。</p>
 
-        {profile && (
+        {user && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
             <p>
-              当前用户：<strong>{profile.username}</strong>
+              当前用户：<strong>{user.username}</strong>
             </p>
-            <p>状态：{profile.enabled ? '启用' : '停用'}</p>
-            <p>角色：{profile.roles.join(', ') || '无'}</p>
+            <p>状态：{user.enabled ? '启用' : '停用'}</p>
+            <p>角色：{user.roles.join(', ') || '无'}</p>
           </div>
         )}
 

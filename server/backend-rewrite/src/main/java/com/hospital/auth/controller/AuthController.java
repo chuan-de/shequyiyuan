@@ -5,6 +5,7 @@ import com.hospital.auth.dto.CurrentUserResponse;
 import com.hospital.auth.dto.LoginRequest;
 import com.hospital.auth.dto.RegisterRequest;
 import com.hospital.auth.service.AuthService;
+import com.hospital.common.ApiResponse;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.Map;
@@ -27,18 +28,18 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(authService.login(request)));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "registered"));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(Map.of("message", "registered"), "registered"));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<CurrentUserResponse> me(Principal principal) {
-        return ResponseEntity.ok(authService.currentUser(principal.getName()));
+    public ResponseEntity<ApiResponse<CurrentUserResponse>> me(Principal principal) {
+        return ResponseEntity.ok(ApiResponse.ok(authService.currentUser(principal.getName())));
     }
 }
