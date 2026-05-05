@@ -35,6 +35,19 @@ export type DictionaryItemResponse = {
   enabled: boolean;
 };
 
+
+type ApiResponse<T> = {
+  success: boolean;
+  message?: string;
+  data: T;
+};
+
+type ApiErrorResponse = {
+  message?: string;
+  errorCode?: string;
+  details?: string[];
+};
+
 async function parseError(response: Response): Promise<Error> {
   const text = await response.text();
 

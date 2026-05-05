@@ -83,3 +83,9 @@ curl http://localhost:8080/api/v1/auth/me \
 - **Postgres 未启动**：执行 `docker compose ps` 确认 `postgres` 服务状态，必要时重新执行 `docker compose up -d postgres`。
 - **Flyway migration 失败**：查看后端启动日志与数据库连接配置，确认数据库可连接且迁移脚本版本连续、未重复执行。
 - **JWT secret 过短**：检查后端 JWT 配置，确保 secret 长度满足签名算法要求（建议至少 32 字节）。
+
+## 团队前端规范（补充）
+
+- `web/components/ui/` 与 `web/components/layout/` 组件文件统一使用 **小写 kebab-case** 文件名。
+- **导入路径大小写必须与文件名完全一致**（包括别名路径 `@/components/...`）。
+- 禁止在仓库中并存仅大小写不同的重复组件文件。
