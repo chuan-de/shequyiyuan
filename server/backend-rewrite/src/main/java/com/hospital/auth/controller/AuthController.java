@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,6 +40,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize("hasAuthority('auth:me:read')")
     public ResponseEntity<ApiResponse<CurrentUserResponse>> me(Principal principal) {
         return ResponseEntity.ok(ApiResponse.ok(authService.currentUser(principal.getName())));
     }

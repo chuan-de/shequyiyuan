@@ -8,6 +8,7 @@ import com.hospital.auth.entity.AppRole;
 import com.hospital.auth.entity.AppUser;
 import com.hospital.auth.entity.AppUserRole;
 import com.hospital.auth.repository.AppRoleRepository;
+import com.hospital.auth.repository.AppRolePermissionRepository;
 import com.hospital.auth.repository.AppUserRepository;
 import com.hospital.auth.repository.AppUserRoleRepository;
 import com.hospital.auth.security.JwtProperties;
@@ -32,6 +33,7 @@ public class AuthService {
     private final AppUserRepository appUserRepository;
     private final AppRoleRepository appRoleRepository;
     private final AppUserRoleRepository appUserRoleRepository;
+    private final AppRolePermissionRepository appRolePermissionRepository;
 
     public AuthService(
         AuthenticationManager authenticationManager,
@@ -41,7 +43,8 @@ public class AuthService {
         JwtProperties jwtProperties,
         AppUserRepository appUserRepository,
         AppRoleRepository appRoleRepository,
-        AppUserRoleRepository appUserRoleRepository
+        AppUserRoleRepository appUserRoleRepository,
+        AppRolePermissionRepository appRolePermissionRepository
     ) {
         this.authenticationManager = authenticationManager;
         this.authUserDetailsService = authUserDetailsService;
@@ -51,6 +54,7 @@ public class AuthService {
         this.appUserRepository = appUserRepository;
         this.appRoleRepository = appRoleRepository;
         this.appUserRoleRepository = appUserRoleRepository;
+        this.appRolePermissionRepository = appRolePermissionRepository;
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -96,6 +100,13 @@ public class AuthService {
             .map(link -> link.getRole().getRoleCode())
             .toList();
 
-        return new CurrentUserResponse(user.getUsername(), user.getEnabled(), roles);
+        List<String> permissions = appUserRoleRepository.findByIdUserId(user.getId())
+            .stream()
+            .flatMap(link -> appRolePermissionRepository.findByIdRoleId(link.getRole().getId()).stream())
+            .map(link -> link.getPermission().getPermissionCode())
+            .distinct()
+            .toList();
+
+        return new CurrentUserResponse(user.getUsername(), user.getEnabled(), roles, permissions);
     }
 }

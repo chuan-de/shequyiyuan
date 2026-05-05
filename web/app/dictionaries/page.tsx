@@ -6,7 +6,8 @@ import { AppShell } from '@/components/layout/app-shell';
 import Link from 'next/link';
 import { Button, buttonVariantClass } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { DictionaryItemResponse, DictionaryResponse, listDictionaries, listDictionaryItems } from '@/lib/api';
+import { DictionaryItemResponse, DictionaryResponse, currentUser, listDictionaries, listDictionaryItems } from '@/lib/api';
+import { hasPermission } from '@/lib/permissions';
 
 export default function DictionariesPage() {
   const router = useRouter();
@@ -27,6 +28,13 @@ export default function DictionariesPage() {
 
     setToken(currentToken);
     setLoadingDicts(true);
+
+    currentUser(currentToken).then((u) => {
+      if (!hasPermission(u, 'dictionary:read')) {
+        setError('当前账号没有 dictionary:read 权限');
+        router.replace('/dashboard');
+      }
+    }).catch(() => {});
 
     listDictionaries(currentToken)
       .then((result) => {

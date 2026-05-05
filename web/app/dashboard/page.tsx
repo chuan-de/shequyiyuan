@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { LinkButton, Button } from '@/components/ui/button';
 import { CurrentUserResponse, currentUser } from '@/lib/api';
 import { readToken, clearToken } from '@/lib/token-storage';
+import { hasPermission } from '@/lib/permissions';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -52,6 +53,7 @@ export default function DashboardPage() {
             </p>
             <p>状态：{user.enabled ? '启用' : '停用'}</p>
             <p>角色：{user.roles.join(', ') || '无'}</p>
+            <p>权限：{user.permissions.join(', ') || '无'}</p>
           </div>
         )}
 
@@ -66,9 +68,11 @@ export default function DashboardPage() {
           <LinkButton variant="secondary" href="/login">
             去登录页
           </LinkButton>
-          <LinkButton variant="secondary" href="/dictionaries">
-            字典管理
-          </LinkButton>
+          {hasPermission(user, 'dictionary:read') ? (
+            <LinkButton variant="secondary" href="/dictionaries">
+              字典管理
+            </LinkButton>
+          ) : null}
           <Button
             onClick={() => {
               clearToken();
