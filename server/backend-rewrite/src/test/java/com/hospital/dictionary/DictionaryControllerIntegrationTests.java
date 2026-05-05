@@ -36,7 +36,7 @@ class DictionaryControllerIntegrationTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.dictCode").value("test_types"))
             .andReturn().getResponse().getContentAsString();
-        String id = created.replaceAll(".*\"id\":(\\d+).*", "$1");
+        String id = created.replaceAll(".*\\\"id\\\":(\\d+).*", "$1");
 
         mockMvc.perform(get("/api/v1/dictionaries/item/" + id)).andExpect(status().isOk()).andExpect(jsonPath("$.itemCode").value("a1"));
 
@@ -47,5 +47,44 @@ class DictionaryControllerIntegrationTests {
 
         mockMvc.perform(delete("/api/v1/dictionaries/" + id)).andExpect(status().isNoContent());
         mockMvc.perform(get("/api/v1/dictionaries/item/" + id)).andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false));
+    }
+
+    @Test
+    void create_withoutAuthentication_shouldReturn401() throws Exception {
+        mockMvc.perform(post("/api/v1/dictionaries")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"dictCode":"test_types","dictName":"测试类型","itemCode":"a1","itemName":"选项A","sortOrder":1,"enabled":true}
+                    """))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = "doctor", roles = {"DOCTOR"})
+    void create_withNonAdminRole_shouldReturn403() throws Exception {
+        mockMvc.perform(post("/api/v1/dictionaries")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"dictCode":"test_types","dictName":"测试类型","itemCode":"a2","itemName":"选项B","sortOrder":1,"enabled":true}
+                    """))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void detail_forNonexistentId_shouldReturn404() throws Exception {
+        mockMvc.perform(get("/api/v1/dictionaries/item/999999"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void create_withInvalidRequest_shouldReturn400() throws Exception {
+        mockMvc.perform(post("/api/v1/dictionaries")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"dictCode":"","dictName":"测试类型","itemCode":"a3","itemName":"选项C","sortOrder":-1,"enabled":true}
+                    """))
+            .andExpect(status().isBadRequest());
     }
 }
