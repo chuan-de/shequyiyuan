@@ -8,6 +8,7 @@ import com.hospital.auth.entity.AppRole;
 import com.hospital.auth.entity.AppUser;
 import com.hospital.auth.entity.AppUserRole;
 import com.hospital.auth.repository.AppRoleRepository;
+import com.hospital.auth.repository.AppRolePermissionRepository;
 import com.hospital.auth.repository.AppUserRepository;
 import com.hospital.auth.repository.AppUserRoleRepository;
 import com.hospital.audit.AuditService;
@@ -102,6 +103,13 @@ public class AuthService {
             .map(link -> link.getRole().getRoleCode())
             .toList();
 
-        return new CurrentUserResponse(user.getUsername(), user.getEnabled(), roles);
+        List<String> permissions = appUserRoleRepository.findByIdUserId(user.getId())
+            .stream()
+            .flatMap(link -> appRolePermissionRepository.findByIdRoleId(link.getRole().getId()).stream())
+            .map(link -> link.getPermission().getPermissionCode())
+            .distinct()
+            .toList();
+
+        return new CurrentUserResponse(user.getUsername(), user.getEnabled(), roles, permissions);
     }
 }

@@ -35,3 +35,13 @@ observability:
 
 server:
   port: 8080
+
+
+app:
+  file:
+    root-dir: ./uploads
+    max-size-bytes: 10485760
+    allowed-mime-types:
+      - image/jpeg
+      - image/png
+      - application/pdf
