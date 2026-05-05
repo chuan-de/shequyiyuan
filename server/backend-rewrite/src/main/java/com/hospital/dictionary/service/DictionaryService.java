@@ -1,54 +1,67 @@
 package com.hospital.dictionary.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hospital.common.PageResponse;
 import com.hospital.dictionary.dto.DictionaryGroupResponse;
 import com.hospital.dictionary.dto.DictionaryItemResponse;
+import com.hospital.dictionary.dto.DictionaryItemUpsertRequest;
 import com.hospital.dictionary.entity.DictionaryItem;
+import com.hospital.dictionary.entity.DictionaryOperationLog;
 import com.hospital.dictionary.repository.DictionaryItemRepository;
+import com.hospital.dictionary.repository.DictionaryOperationLogRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DictionaryService {
+    private final DictionaryItemRepository repo;
+    private final DictionaryOperationLogRepository logRepo;
+    private final ObjectMapper objectMapper;
 
-    private final DictionaryItemRepository dictionaryItemRepository;
+    public DictionaryService(DictionaryItemRepository repo, DictionaryOperationLogRepository logRepo, ObjectMapper objectMapper) {
+        this.repo = repo; this.logRepo = logRepo; this.objectMapper = objectMapper;
+    }
+    public List<DictionaryGroupResponse> listDictionaries() { /* existing */
+        List<DictionaryItem> items = repo.findByEnabledTrueOrderByDictCodeAscSortOrderAscIdAsc();
+        Map<String, List<DictionaryItem>> grouped = items.stream().collect(Collectors.groupingBy(DictionaryItem::getDictCode));
+        return grouped.entrySet().stream().map(e -> new DictionaryGroupResponse(e.getKey(), e.getValue().get(0).getDictName(), e.getValue().stream().map(this::toResponse).toList())).toList();
+    }
+    public List<DictionaryItemResponse> listItems(String dictCode) { return repo.findByDictCodeAndEnabledTrueOrderBySortOrderAscIdAsc(dictCode).stream().map(this::toResponse).toList(); }
 
-    public DictionaryService(DictionaryItemRepository dictionaryItemRepository) {
-        this.dictionaryItemRepository = dictionaryItemRepository;
+    public PageResponse<DictionaryItemResponse> page(String dictCode, String itemName, int page, int size) {
+        var p = repo.findByDictCodeContainingIgnoreCaseAndItemNameContainingIgnoreCase(dictCode == null ? "" : dictCode, itemName == null ? "" : itemName,
+                PageRequest.of(page - 1, size, Sort.by("dictCode").ascending().and(Sort.by("sortOrder").ascending()).and(Sort.by("id").ascending())));
+        return new PageResponse<>(p.getContent().stream().map(this::toResponse).toList(), p.getTotalElements(), page, size);
     }
 
-    public List<DictionaryGroupResponse> listDictionaries() {
-        List<DictionaryItem> items = dictionaryItemRepository.findByEnabledTrueOrderByDictCodeAscSortOrderAscIdAsc();
+    public DictionaryItemResponse detail(Long id) { return toResponse(repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Dictionary item not found"))); }
 
-        Map<String, List<DictionaryItem>> grouped = items.stream()
-                .collect(Collectors.groupingBy(DictionaryItem::getDictCode));
-
-        return grouped.entrySet().stream()
-                .map(entry -> new DictionaryGroupResponse(
-                        entry.getKey(),
-                        entry.getValue().get(0).getDictName(),
-                        entry.getValue().stream().map(this::toResponse).toList()
-                ))
-                .sorted((a, b) -> a.dictCode().compareToIgnoreCase(b.dictCode()))
-                .toList();
+    @Transactional
+    public DictionaryItemResponse create(DictionaryItemUpsertRequest req, String operator) {
+        repo.findByDictCodeAndItemCode(req.dictCode(), req.itemCode()).ifPresent(i -> { throw new IllegalArgumentException("Dictionary item already exists"); });
+        DictionaryItem item = apply(new DictionaryItem(), req); item = repo.save(item);
+        saveLog(item.getId(), "CREATE", operator, null, item);
+        return toResponse(item);
+    }
+    @Transactional
+    public DictionaryItemResponse update(Long id, DictionaryItemUpsertRequest req, String operator) {
+        DictionaryItem item = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Dictionary item not found"));
+        String before = toJson(item); apply(item, req); item = repo.save(item); saveLog(id, "UPDATE", operator, before, item); return toResponse(item);
+    }
+    @Transactional
+    public void deactivate(Long id, String operator) {
+        DictionaryItem item = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Dictionary item not found"));
+        String before = toJson(item); item.setEnabled(false); repo.save(item); saveLog(id, "DEACTIVATE", operator, before, item);
     }
 
-    public List<DictionaryItemResponse> listItems(String dictCode) {
-        return dictionaryItemRepository.findByDictCodeAndEnabledTrueOrderBySortOrderAscIdAsc(dictCode).stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
-    private DictionaryItemResponse toResponse(DictionaryItem item) {
-        return new DictionaryItemResponse(
-                item.getId(),
-                item.getDictCode(),
-                item.getDictName(),
-                item.getItemCode(),
-                item.getItemName(),
-                item.getSortOrder(),
-                item.getEnabled()
-        );
-    }
+    private DictionaryItem apply(DictionaryItem i, DictionaryItemUpsertRequest r){ i.setDictCode(r.dictCode()); i.setDictName(r.dictName()); i.setItemCode(r.itemCode()); i.setItemName(r.itemName()); i.setSortOrder(r.sortOrder()); i.setEnabled(r.enabled()==null?true:r.enabled()); return i;}
+    private DictionaryItemResponse toResponse(DictionaryItem item) { return new DictionaryItemResponse(item.getId(), item.getDictCode(), item.getDictName(), item.getItemCode(), item.getItemName(), item.getSortOrder(), item.getEnabled()); }
+    private void saveLog(Long itemId,String op,String operator,String before,DictionaryItem after){ logRepo.save(DictionaryOperationLog.of(itemId, op, operator, before, toJson(after))); }
+    private String toJson(DictionaryItem item){ try { return objectMapper.writeValueAsString(toResponse(item)); } catch (JsonProcessingException e) { return "{}"; } }
 }

@@ -20,6 +20,7 @@ export type CurrentUserResponse = {
   username: string;
   enabled: boolean;
   roles: string[];
+  permissions: string[];
 };
 
 export type DictionaryResponse = {
