@@ -2,6 +2,7 @@ package com.hospital.config;
 
 import com.hospital.auth.security.JwtAuthenticationFilter;
 import com.hospital.auth.security.JwtProperties;
+import com.hospital.file.config.FileStorageProperties;
 import java.util.List;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -23,9 +24,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
-@EnableMethodSecurity
-@EnableConfigurationProperties(JwtProperties.class)
-@EnableMethodSecurity
+@EnableConfigurationProperties({JwtProperties.class, FileStorageProperties.class})
 public class SecurityConfig {
 
     @Bean
