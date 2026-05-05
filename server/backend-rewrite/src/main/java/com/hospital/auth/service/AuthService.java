@@ -10,6 +10,7 @@ import com.hospital.auth.entity.AppUserRole;
 import com.hospital.auth.repository.AppRoleRepository;
 import com.hospital.auth.repository.AppUserRepository;
 import com.hospital.auth.repository.AppUserRoleRepository;
+import com.hospital.audit.AuditService;
 import com.hospital.auth.security.JwtProperties;
 import com.hospital.auth.security.JwtService;
 import com.hospital.user.service.AuthUserDetailsService;
@@ -32,6 +33,7 @@ public class AuthService {
     private final AppUserRepository appUserRepository;
     private final AppRoleRepository appRoleRepository;
     private final AppUserRoleRepository appUserRoleRepository;
+    private final AuditService auditService;
 
     public AuthService(
         AuthenticationManager authenticationManager,
@@ -41,7 +43,8 @@ public class AuthService {
         JwtProperties jwtProperties,
         AppUserRepository appUserRepository,
         AppRoleRepository appRoleRepository,
-        AppUserRoleRepository appUserRoleRepository
+        AppUserRoleRepository appUserRoleRepository,
+        AuditService auditService
     ) {
         this.authenticationManager = authenticationManager;
         this.authUserDetailsService = authUserDetailsService;
@@ -51,6 +54,7 @@ public class AuthService {
         this.appUserRepository = appUserRepository;
         this.appRoleRepository = appRoleRepository;
         this.appUserRoleRepository = appUserRoleRepository;
+        this.auditService = auditService;
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -65,6 +69,7 @@ public class AuthService {
             .orElse("USER");
 
         String token = jwtService.generateToken(request.username(), roleCode);
+        auditService.log("LOGIN", request.username(), "auth", "User login successful");
         return new AuthResponse(token, "Bearer", jwtProperties.accessTokenTtl().toSeconds());
     }
 
@@ -84,6 +89,7 @@ public class AuthService {
             .orElseThrow(() -> new IllegalStateException("Missing USER role seed data"));
 
         appUserRoleRepository.save(new AppUserRole(savedUser, userRole));
+        auditService.log("REGISTER", request.username(), "user", "User registered with USER role");
     }
 
     @Transactional(readOnly = true)
