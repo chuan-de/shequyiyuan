@@ -28,7 +28,7 @@ export default function DashboardPage() {
     currentUser(token.accessToken)
       .then(setUser)
       .catch(() => {
-        setError('用户信息获取失败，请重新登录');
+        setError('Failed to load user profile. Please sign in again.');
         clearToken();
         router.replace('/login');
       })
@@ -37,40 +37,40 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <AppShell title="Dashboard" description="系统状态与账号信息。">
-        <Card>加载中...</Card>
+      <AppShell title="Dashboard" description="System status and account information.">
+        <Card>Loading...</Card>
       </AppShell>
     );
   }
 
   return (
-    <AppShell title="Dashboard" description="已完成前后端认证联调（login/register/me）。">
+    <AppShell title="Dashboard" description="Frontend and backend auth integration is ready (login/register/me).">
       <Card className="space-y-4">
         {user && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
             <p>
-              当前用户：<strong>{user.username}</strong>
+              Current User:<strong>{user.username}</strong>
             </p>
-            <p>状态：{user.enabled ? '启用' : '停用'}</p>
-            <p>角色：{user.roles.join(', ') || '无'}</p>
-            <p>权限：{user.permissions.join(', ') || '无'}</p>
+            <p>Status:{user.enabled ? 'Enabled' : 'Disabled'}</p>
+            <p>Roles:{user.roles.join(', ') || 'None'}</p>
+            <p>Permissions:{user.permissions.join(', ') || 'None'}</p>
           </div>
         )}
 
-        <p className="text-sm text-slate-700">当前 Token（前 40 字符）：</p>
+        <p className="text-sm text-slate-700">Current Token (first 40 chars):</p>
         <code className="block overflow-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100">
-          {tokenPreview || '未登录或未获取 token'}
+          {tokenPreview || 'Not signed in or token unavailable'}
         </code>
 
         {error && <p className="error">{error}</p>}
 
         <div className="flex flex-wrap gap-3">
           <LinkButton variant="secondary" href="/login">
-            去登录页
+            Go to Login
           </LinkButton>
           {hasPermission(user, 'dictionary:read') ? (
             <LinkButton variant="secondary" href="/dictionaries">
-              字典管理
+              Dictionary Management
             </LinkButton>
           ) : null}
           <Button
@@ -79,7 +79,7 @@ export default function DashboardPage() {
               router.replace('/login');
             }}
           >
-            退出登录
+            Sign Out
           </Button>
         </div>
       </Card>

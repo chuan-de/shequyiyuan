@@ -33,7 +33,7 @@ export default function LoginPage() {
       writeToken({ accessToken: result.accessToken, tokenType: result.tokenType });
       router.push('/dashboard');
     } catch (submitError) {
-      const message = submitError instanceof Error ? submitError.message : '登录失败';
+      const message = submitError instanceof Error ? submitError.message : 'Sign in failed';
       setError(message);
     } finally {
       setLoading(false);
@@ -43,31 +43,31 @@ export default function LoginPage() {
   return (
     <AuthLayout>
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight">登录</h1>
-        <p className="hint">使用后端 /api/v1/auth/login 接口获取 JWT。</p>
+        <h1 className="text-2xl font-bold tracking-tight">Sign In</h1>
+        <p className="hint">Use backend REST endpoint /api/v1/auth/login to get a JWT.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="label" htmlFor="username">用户名</label>
+          <label className="label" htmlFor="username">Username</label>
           <Input id="username" value={username} onChange={event => setUsername(event.target.value)} required />
         </div>
 
         <div>
-          <label className="label" htmlFor="password">密码</label>
+          <label className="label" htmlFor="password">Password</label>
           <Input id="password" type="password" value={password} onChange={event => setPassword(event.target.value)} required />
         </div>
 
         {error && <p className="error">{error}</p>}
 
         <Button className="w-full" type="submit" disabled={loading}>
-          {loading ? '登录中...' : '登录'}
+          {loading ? 'Signing in...' : 'Sign In'}
         </Button>
       </form>
 
       <p className="hint">
-        还没有账号？
-        <Link className="ml-2 text-brand hover:underline" href="/register">去注册</Link>
+        No account yet?
+        <Link className="ml-2 text-brand hover:underline" href="/register">Create one</Link>
       </p>
     </AuthLayout>
   );

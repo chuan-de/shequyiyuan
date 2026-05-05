@@ -13,9 +13,9 @@ export default function DictionariesPage() {
   const router = useRouter();
   const [token, setToken] = useState('');
   const [dictionaries, setDictionaries] = useState<DictionaryResponse[]>([]);
-  const [selectedDictCode, setSelectedDictCode] = useState('');
+  const [selectedDictionaryCode, setSelectedDictionaryCode] = useState('');
   const [items, setItems] = useState<DictionaryItemResponse[]>([]);
-  const [loadingDicts, setLoadingDicts] = useState(true);
+  const [loadingDictionaries, setLoadingDictionaries] = useState(true);
   const [loadingItems, setLoadingItems] = useState(false);
   const [error, setError] = useState('');
 
@@ -27,11 +27,11 @@ export default function DictionariesPage() {
     }
 
     setToken(currentToken);
-    setLoadingDicts(true);
+    setLoadingDictionaries(true);
 
-    currentUser(currentToken).then((u) => {
-      if (!hasPermission(u, 'dictionary:read')) {
-        setError('当前账号没有 dictionary:read 权限');
+    currentUser(currentToken).then((user) => {
+      if (!hasPermission(user, 'dictionary:read')) {
+        setError('Current account does not have dictionary:read permission');
         router.replace('/dashboard');
       }
     }).catch(() => {});
@@ -39,23 +39,19 @@ export default function DictionariesPage() {
     listDictionaries(currentToken)
       .then((result) => {
         setDictionaries(result);
-        if (result.length > 0) {
-          setSelectedDictCode(result[0].code);
-        }
+        if (result.length > 0) setSelectedDictionaryCode(result[0].code);
       })
       .catch(() => {
-        setError('获取字典列表失败，请重新登录后重试');
+        setError('Failed to load dictionaries. Please sign in again.');
         localStorage.removeItem('access_token');
         localStorage.removeItem('token_type');
         router.replace('/login');
       })
-      .finally(() => {
-        setLoadingDicts(false);
-      });
+      .finally(() => setLoadingDictionaries(false));
   }, [router]);
 
   useEffect(() => {
-    if (!token || !selectedDictCode) {
+    if (!token || !selectedDictionaryCode) {
       setItems([]);
       return;
     }
@@ -63,33 +59,31 @@ export default function DictionariesPage() {
     setLoadingItems(true);
     setError('');
 
-    listDictionaryItems(token, selectedDictCode)
+    listDictionaryItems(token, selectedDictionaryCode)
       .then(setItems)
       .catch(() => {
-        setError('获取字典项失败，请稍后重试');
+        setError('Failed to load dictionary items. Please try again later.');
         setItems([]);
       })
-      .finally(() => {
-        setLoadingItems(false);
-      });
-  }, [selectedDictCode, token]);
+      .finally(() => setLoadingItems(false));
+  }, [selectedDictionaryCode, token]);
 
   return (
-    <AppShell title="字典管理" description="浏览系统字典分类及字典项。">
+    <AppShell title="Dictionary Management" description="Browse dictionary categories and dictionary items.">
       <div className="grid gap-4 md:grid-cols-[280px_1fr]">
         <Card className="space-y-3">
-          <h2 className="text-lg font-semibold">字典分类</h2>
-          {loadingDicts ? <p className="hint">加载中...</p> : null}
-          {!loadingDicts && dictionaries.length === 0 ? <p className="hint">暂无字典分类</p> : null}
+          <h2 className="text-lg font-semibold">Dictionary Categories</h2>
+          {loadingDictionaries ? <p className="hint">Loading...</p> : null}
+          {!loadingDictionaries && dictionaries.length === 0 ? <p className="hint">No dictionary categories</p> : null}
           <div className="space-y-2">
-            {dictionaries.map((dict) => (
+            {dictionaries.map((dictionary) => (
               <Button
-                key={dict.code}
-                variant={selectedDictCode === dict.code ? 'primary' : 'secondary'}
+                key={dictionary.code}
+                variant={selectedDictionaryCode === dictionary.code ? 'primary' : 'secondary'}
                 className="w-full justify-start"
-                onClick={() => setSelectedDictCode(dict.code)}
+                onClick={() => setSelectedDictionaryCode(dictionary.code)}
               >
-                {dict.name}（{dict.code}）
+                {dictionary.name} ({dictionary.code})
               </Button>
             ))}
           </div>
@@ -97,23 +91,23 @@ export default function DictionariesPage() {
 
         <Card className="space-y-4 overflow-auto">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">字典项</h2>
+            <h2 className="text-lg font-semibold">Dictionary Items</h2>
             <Link href="/dashboard" className={buttonVariantClass('secondary')}>
-              返回 Dashboard
+              Back to Dashboard
             </Link>
           </div>
 
           {error ? <p className="error">{error}</p> : null}
-          {loadingItems ? <p className="hint">加载字典项中...</p> : null}
+          {loadingItems ? <p className="hint">Loading dictionary items...</p> : null}
 
           {!loadingItems && items.length > 0 ? (
             <table className="w-full min-w-[560px] table-auto border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-slate-600">
-                  <th className="px-2 py-2">名称</th>
-                  <th className="px-2 py-2">编码</th>
-                  <th className="px-2 py-2">排序</th>
-                  <th className="px-2 py-2">启用状态</th>
+                  <th className="px-2 py-2">Name</th>
+                  <th className="px-2 py-2">Code</th>
+                  <th className="px-2 py-2">Sort Order</th>
+                  <th className="px-2 py-2">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -122,14 +116,14 @@ export default function DictionariesPage() {
                     <td className="px-2 py-2">{item.name}</td>
                     <td className="px-2 py-2 font-mono text-xs">{item.value}</td>
                     <td className="px-2 py-2">{item.sortOrder}</td>
-                    <td className="px-2 py-2">{item.enabled ? '启用' : '停用'}</td>
+                    <td className="px-2 py-2">{item.enabled ? 'Enabled' : 'Disabled'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           ) : null}
 
-          {!loadingItems && selectedDictCode && items.length === 0 ? <p className="hint">该字典暂无字典项</p> : null}
+          {!loadingItems && selectedDictionaryCode && items.length === 0 ? <p className="hint">No items in this dictionary</p> : null}
         </Card>
       </div>
     </AppShell>
