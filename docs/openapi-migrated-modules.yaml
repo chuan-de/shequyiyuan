@@ -1,0 +1,271 @@
+openapi: 3.0.3
+info:
+  title: Shequyiyuan Migrated Modules API
+  version: 1.0.0
+  description: |
+    覆盖当前已迁移模块（认证、健康检查、字典）的请求参数、响应结构与标准错误码。
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/health:
+    get:
+      tags: [health]
+      summary: 健康检查
+      operationId: healthCheck
+      responses:
+        '200':
+          description: 服务可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiEnvelopeHealthResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/auth/register:
+    post:
+      tags: [auth]
+      summary: 注册
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiEnvelopeObject'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      summary: 登录
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiEnvelopeAuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/auth/me:
+    get:
+      tags: [auth]
+      summary: 当前用户信息
+      operationId: currentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiEnvelopeCurrentUserResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/dictionaries:
+    get:
+      tags: [dictionary]
+      summary: 查询字典分组
+      operationId: listDictionaries
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DictionaryGroupResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/dictionaries/{dictionaryCode}/items:
+    get:
+      tags: [dictionary]
+      summary: 查询字典项
+      operationId: listDictionaryItems
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dictionaryCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DictionaryItemResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+    RegisterRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+    AuthResponse:
+      type: object
+      required: [accessToken, tokenType, expiresInSeconds]
+      properties:
+        accessToken: { type: string }
+        tokenType: { type: string }
+        expiresInSeconds: { type: integer, format: int64 }
+    CurrentUserResponse:
+      type: object
+      required: [username, enabled, roles, permissions]
+      properties:
+        username: { type: string }
+        enabled: { type: boolean }
+        roles:
+          type: array
+          items: { type: string }
+        permissions:
+          type: array
+          items: { type: string }
+    DictionaryGroupResponse:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string }
+        name: { type: string }
+    DictionaryItemResponse:
+      type: object
+      required: [id, name, value, sortOrder, enabled]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        value: { type: string }
+        sortOrder: { type: integer, format: int32 }
+        enabled: { type: boolean }
+    HealthResponse:
+      type: object
+      required: [status, service, timestamp]
+      properties:
+        status: { type: string }
+        service: { type: string }
+        timestamp: { type: string, format: date-time }
+    ApiEnvelopeAuthResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/AuthResponse' }
+    ApiEnvelopeCurrentUserResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/CurrentUserResponse' }
+    ApiEnvelopeHealthResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/HealthResponse' }
+    ApiEnvelopeObject:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          type: object
+          additionalProperties: true
+    ApiErrorResponse:
+      type: object
+      properties:
+        message: { type: string }
+        errorCode:
+          type: string
+          enum: [VALIDATION_ERROR, CONFLICT, INTERNAL_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND]
+        details:
+          type: array
+          items: { type: string }
+        traceId: { type: string }
+  responses:
+    ValidationError:
+      description: 参数校验失败
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+    ConflictError:
+      description: 资源冲突
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+    UnauthorizedError:
+      description: 未认证或 token 无效
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+    ForbiddenError:
+      description: 无权限
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+    NotFoundError:
+      description: 资源不存在
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+    InternalError:
+      description: 服务内部错误
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }

@@ -1,14 +1,7 @@
+import { API_ROUTES, type ApiErrorResponse, type ApiResponse, type AuthResponse, type CurrentUserResponse, type DictionaryItemResponse, type DictionaryResponse, errorCodeMessages, type HealthResponse, type LoginPayload, type RegisterPayload } from './api-contract';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 const TRACE_ID_HEADER = 'X-Trace-Id';
-
-const API_ROUTES = {
-  authLogin: '/api/v1/auth/login',
-  authRegister: '/api/v1/auth/register',
-  authCurrentUser: '/api/v1/auth/me',
-  health: '/api/v1/health',
-  dictionaries: '/api/v1/dictionaries',
-  dictionaryItems: (dictionaryCode: string) => `/api/v1/dictionaries/${dictionaryCode}/items`
-} as const;
 
 // Temporary compatibility layer for legacy endpoints.
 // Deprecation date: 2026-09-30 (UTC).
@@ -74,7 +67,7 @@ async function apiFetch(route: string, init: RequestInit = {}): Promise<Response
 
 export async function login(payload: LoginPayload): Promise<AuthResponse> { return unwrapResponse(await apiFetch(API_ROUTES.authLogin,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})); }
 export async function register(payload: RegisterPayload): Promise<void> { await unwrapResponse<Record<string,unknown>>(await apiFetch(API_ROUTES.authRegister,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})); }
-export async function healthCheck(): Promise<{ status: string; service: string; timestamp: string }> { return unwrapResponse(await apiFetch(API_ROUTES.health,{cache:'no-store'})); }
+export async function healthCheck(): Promise<HealthResponse> { return unwrapResponse(await apiFetch(API_ROUTES.health,{cache:'no-store'})); }
 export async function currentUser(token: string): Promise<CurrentUserResponse> { return unwrapResponse(await apiFetch(API_ROUTES.authCurrentUser,{headers:{Authorization:`Bearer ${token}`},cache:'no-store'})); }
 export async function listDictionaries(token: string): Promise<DictionaryResponse[]> { const r=await apiFetch(API_ROUTES.dictionaries,{headers:{Authorization:`Bearer ${token}`},cache:'no-store'}); if(!r.ok) throw await parseError(r); return r.json(); }
 export async function listDictionaryItems(token: string, dictionaryCode: string): Promise<DictionaryItemResponse[]> { const r=await apiFetch(API_ROUTES.dictionaryItems(dictionaryCode),{headers:{Authorization:`Bearer ${token}`},cache:'no-store'}); if(!r.ok) throw await parseError(r); return r.json(); }
