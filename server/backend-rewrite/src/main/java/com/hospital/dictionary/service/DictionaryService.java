@@ -3,6 +3,8 @@ package com.hospital.dictionary.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hospital.common.PageResponse;
+import com.hospital.common.ExportRequest;
+import com.hospital.common.ExportResponse;
 import com.hospital.dictionary.dto.DictionaryGroupResponse;
 import com.hospital.dictionary.dto.DictionaryItemResponse;
 import com.hospital.dictionary.dto.DictionaryItemUpsertRequest;
@@ -34,10 +36,23 @@ public class DictionaryService {
     }
     public List<DictionaryItemResponse> listItems(String dictCode) { return repo.findByDictCodeAndEnabledTrueOrderBySortOrderAscIdAsc(dictCode).stream().map(this::toResponse).toList(); }
 
-    public PageResponse<DictionaryItemResponse> page(String dictCode, String itemName, int page, int size) {
+    public PageResponse<DictionaryItemResponse> page(String dictCode, String itemName, Boolean enabled, int page, int size, String sortBy, String sortDir) {
+        Sort sort = "desc".equalsIgnoreCase(sortDir) ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         var p = repo.findByDictCodeContainingIgnoreCaseAndItemNameContainingIgnoreCase(dictCode == null ? "" : dictCode, itemName == null ? "" : itemName,
-                PageRequest.of(page - 1, size, Sort.by("dictCode").ascending().and(Sort.by("sortOrder").ascending()).and(Sort.by("id").ascending())));
-        return new PageResponse<>(p.getContent().stream().map(this::toResponse).toList(), p.getTotalElements(), page, size);
+                PageRequest.of(page - 1, size, sort.and(Sort.by("id").ascending())));
+        var records = p.getContent().stream().filter(item -> enabled == null || item.getEnabled().equals(enabled)).map(this::toResponse).toList();
+        return new PageResponse<>(records, p.getTotalElements(), page, size);
+    }
+
+    public ExportResponse export(ExportRequest req) {
+        List<String> whitelist = List.of("dictCode", "dictName", "itemCode", "itemName", "sortOrder", "enabled");
+        if (!whitelist.containsAll(req.fields())) {
+            throw new IllegalArgumentException("Export fields contain non-whitelisted columns");
+        }
+        if (req.async()) {
+            return ExportResponse.queued("dict-exp-" + System.currentTimeMillis());
+        }
+        return ExportResponse.ready("/api/v1/dictionaries/export/download/latest");
     }
 
     public DictionaryItemResponse detail(Long id) { return toResponse(repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Dictionary item not found"))); }
