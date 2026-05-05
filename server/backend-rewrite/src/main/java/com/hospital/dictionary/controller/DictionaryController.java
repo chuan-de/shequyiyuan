@@ -1,6 +1,8 @@
 package com.hospital.dictionary.controller;
 
 import com.hospital.common.PageResponse;
+import com.hospital.common.ExportRequest;
+import com.hospital.common.ExportResponse;
 import com.hospital.dictionary.dto.DictionaryGroupResponse;
 import com.hospital.dictionary.dto.DictionaryItemResponse;
 import com.hospital.dictionary.dto.DictionaryItemUpsertRequest;
@@ -23,7 +25,10 @@ public class DictionaryController {
     @GetMapping("/{dictCode}/items")
     public ResponseEntity<List<DictionaryItemResponse>> listItems(@PathVariable String dictCode) { return ResponseEntity.ok(service.listItems(dictCode)); }
     @GetMapping
-    public ResponseEntity<PageResponse<DictionaryItemResponse>> page(@RequestParam(required=false) String dictCode, @RequestParam(required=false) String itemName, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="10") int size){return ResponseEntity.ok(service.page(dictCode,itemName,page,size));}
+    public ResponseEntity<com.hospital.common.ApiResponse<PageResponse<DictionaryItemResponse>>> page(@RequestParam(required=false) String dictCode, @RequestParam(required=false) String itemName, @RequestParam(required=false) Boolean enabled, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="10") int size, @RequestParam(defaultValue = "sortOrder") String sortBy, @RequestParam(defaultValue = "asc") String sortDir){return ResponseEntity.ok(com.hospital.common.ApiResponse.ok(service.page(dictCode,itemName,enabled,page,size,sortBy,sortDir)));}
+    @PostMapping("/export")
+    @PreAuthorize("hasAuthority('dictionary:export') or hasRole('ADMIN')")
+    public ResponseEntity<com.hospital.common.ApiResponse<ExportResponse>> export(@Valid @RequestBody ExportRequest req) { return ResponseEntity.ok(com.hospital.common.ApiResponse.ok(service.export(req))); }
     @GetMapping("/item/{id}")
     public ResponseEntity<DictionaryItemResponse> detail(@PathVariable Long id){ return ResponseEntity.ok(service.detail(id)); }
     @PostMapping

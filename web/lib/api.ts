@@ -31,6 +31,8 @@ export type AuthResponse = { accessToken: string; tokenType: string; expiresInSe
 export type CurrentUserResponse = { username: string; enabled: boolean; roles: string[]; permissions: string[] };
 export type DictionaryResponse = { code: string; name: string };
 export type DictionaryItemResponse = { id: number; name: string; value: string; sortOrder: number; enabled: boolean };
+export type PageResponse<T> = { records: T[]; total: number; page: number; size: number };
+export type DictionaryQuery = { page?: number; size?: number; sortBy?: string; sortDir?: 'asc' | 'desc'; dictCode?: string; itemName?: string; enabled?: boolean };
 
 type ApiResponse<T> = { success: boolean; message?: string; data: T };
 type ApiErrorResponse = { message?: string; errorCode?: string; details?: string[]; traceId?: string };
@@ -76,3 +78,14 @@ export async function healthCheck(): Promise<{ status: string; service: string; 
 export async function currentUser(token: string): Promise<CurrentUserResponse> { return unwrapResponse(await apiFetch(API_ROUTES.authCurrentUser,{headers:{Authorization:`Bearer ${token}`},cache:'no-store'})); }
 export async function listDictionaries(token: string): Promise<DictionaryResponse[]> { const r=await apiFetch(API_ROUTES.dictionaries,{headers:{Authorization:`Bearer ${token}`},cache:'no-store'}); if(!r.ok) throw await parseError(r); return r.json(); }
 export async function listDictionaryItems(token: string, dictionaryCode: string): Promise<DictionaryItemResponse[]> { const r=await apiFetch(API_ROUTES.dictionaryItems(dictionaryCode),{headers:{Authorization:`Bearer ${token}`},cache:'no-store'}); if(!r.ok) throw await parseError(r); return r.json(); }
+export async function queryDictionaryItems(token: string, query: DictionaryQuery): Promise<PageResponse<DictionaryItemResponse>> {
+  const params = new URLSearchParams();
+  if (query.page) params.set('page', String(query.page));
+  if (query.size) params.set('size', String(query.size));
+  if (query.sortBy) params.set('sortBy', query.sortBy);
+  if (query.sortDir) params.set('sortDir', query.sortDir);
+  if (query.dictCode) params.set('dictCode', query.dictCode);
+  if (query.itemName) params.set('itemName', query.itemName);
+  if (query.enabled !== undefined) params.set('enabled', String(query.enabled));
+  return unwrapResponse(await apiFetch(`${API_ROUTES.dictionaries}?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }));
+}

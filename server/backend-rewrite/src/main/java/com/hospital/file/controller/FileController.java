@@ -2,6 +2,8 @@ package com.hospital.file.controller;
 
 import com.hospital.auth.repository.AppUserRepository;
 import com.hospital.common.ApiResponse;
+import com.hospital.common.ExportRequest;
+import com.hospital.common.ExportResponse;
 import com.hospital.file.dto.FileMetadataResponse;
 import com.hospital.file.entity.FileMetadata;
 import com.hospital.file.service.FileService;
@@ -68,6 +70,18 @@ public class FileController {
     public ApiResponse<Void> scanMigration(@RequestParam String path, @RequestParam String businessType, java.security.Principal principal) throws Exception {
         fileService.migrateFromDirectory(Path.of(path), currentUserId(principal.getName()), businessType);
         return ApiResponse.ok(null, "migration scan complete");
+    }
+
+    @PostMapping("/export")
+    public ApiResponse<ExportResponse> export(@RequestBody ExportRequest request) {
+        var whitelist = java.util.Set.of("id", "originalFilename", "mimeType", "size", "businessType", "businessId", "createdAt");
+        if (!whitelist.containsAll(request.fields())) {
+            throw new IllegalArgumentException("Export fields contain non-whitelisted columns");
+        }
+        if (request.async()) {
+            return ApiResponse.ok(ExportResponse.queued("file-exp-" + System.currentTimeMillis()));
+        }
+        return ApiResponse.ok(ExportResponse.ready("/api/v1/files/export/download/latest"));
     }
 
     private Long currentUserId(String username) {

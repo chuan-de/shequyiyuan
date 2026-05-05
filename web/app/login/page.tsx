@@ -8,6 +8,7 @@ import { writeToken, readToken } from '@/lib/token-storage';
 import { AuthLayout } from '@/components/layout/auth-layout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { minLength, required, validateForm } from '@/components/ui/form-validator';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,6 +26,11 @@ export default function LoginPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const errors = validateForm({ username, password }, { username: [required('Username')], password: [required('Password'), minLength('Password', 6)] });
+    if (Object.keys(errors).length > 0) {
+      setError(Object.values(errors)[0]);
+      return;
+    }
     setLoading(true);
     setError('');
 

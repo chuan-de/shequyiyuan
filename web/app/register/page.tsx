@@ -7,6 +7,7 @@ import { register } from '@/lib/api';
 import { AuthLayout } from '@/components/layout/auth-layout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { minLength, required, sameAs, validateForm } from '@/components/ui/form-validator';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -19,8 +20,12 @@ export default function RegisterPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    const errors = validateForm(
+      { username, password, confirmPassword },
+      { username: [required('Username')], password: [required('Password'), minLength('Password', 6)], confirmPassword: [required('Confirm Password'), sameAs('Confirm Password', 'password')] }
+    );
+    if (Object.keys(errors).length > 0) {
+      setError(Object.values(errors)[0]);
       return;
     }
 
