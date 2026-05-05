@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CurrentUserResponse, currentUser } from '@/lib/api';
-import { LinkButton } from '@/components/ui/button';
+import Link from 'next/link';
+import { buttonVariantClass } from '@/components/ui/button';
 
 export default function DashboardPage() {
   const { user, tokenPreview, loading } = useRequireAuth();
@@ -40,12 +41,12 @@ export default function DashboardPage() {
         {error && <p className="error">{error}</p>}
 
         <div className="flex flex-wrap gap-3">
-          <LinkButton variant="secondary" href="/login">
+          <Link href="/login" className={buttonVariantClass('secondary')}>
             去登录页
-          </LinkButton>
-          <LinkButton variant="secondary" href="/dictionaries">
+          </Link>
+          <Link href="/dictionaries" className={buttonVariantClass('secondary')}>
             字典管理
-          </LinkButton>
+          </Link>
           <button
             className="btn"
             onClick={() => {
