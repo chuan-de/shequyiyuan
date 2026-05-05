@@ -1,6 +1,8 @@
 # Node dependencies
 node_modules/
 web/node_modules/
+web/pnpm-lock.yaml
+.idea/
 
 # Next.js build output
 web/.next/
