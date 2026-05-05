@@ -1,7 +1,7 @@
 # API 契约变更治理流程
 
 ## 适用范围
-- 所有已迁移模块（当前含 auth、health、dictionary）的接口字段变更。
+- 所有已迁移模块（模块清单、状态、负责人、证据链接统一以 `docs/migration-status.md` 为准）的接口字段变更。
 - 包含请求字段、响应字段、错误码、字段语义与枚举。
 
 ## 变更准入规则（强制）
@@ -26,3 +26,9 @@
 ## 发布节奏
 - 常规契约版本按双周节奏发布。
 - 紧急补丁允许插队，但必须在 24 小时内补齐版本记录与兼容说明。
+
+
+## 与迁移状态文件联动（强制）
+- 涉及模块迁移状态变化（Not Started/Partial/Done/Diverged）的契约 PR，必须同步更新 `docs/migration-status.md`。
+- 当契约变更导致 legacy 行为偏差时，模块状态应评估是否调整为 `Diverged`，并在状态文件补齐证据链接。
+- `route-migration-final-report` 与 `p1-iteration-module-plan` 的完成度引用必须指向状态文件，禁止在各文档维护独立完成度口径。
