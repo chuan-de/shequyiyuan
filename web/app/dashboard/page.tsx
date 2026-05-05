@@ -1,8 +1,9 @@
 'use client';
 
-import { AppShell } from '@/components/layout/AppShell';
-import { Card } from '@/components/ui/Card';
-import { useRequireAuth } from '@/lib/auth';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { CurrentUserResponse, currentUser } from '@/lib/api';
+import { LinkButton } from '@/components/ui/button';
 
 export default function DashboardPage() {
   const { user, tokenPreview, loading } = useRequireAuth();
@@ -35,7 +36,28 @@ export default function DashboardPage() {
         <code className="block overflow-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100">
           {tokenPreview || '未登录或未获取 token'}
         </code>
-      </Card>
-    </AppShell>
+
+        {error && <p className="error">{error}</p>}
+
+        <div className="flex flex-wrap gap-3">
+          <LinkButton variant="secondary" href="/login">
+            去登录页
+          </LinkButton>
+          <LinkButton variant="secondary" href="/dictionaries">
+            字典管理
+          </LinkButton>
+          <button
+            className="btn"
+            onClick={() => {
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('token_type');
+              router.replace('/login');
+            }}
+          >
+            退出登录
+          </button>
+        </div>
+      </section>
+    </main>
   );
 }

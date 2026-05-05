@@ -22,17 +22,17 @@ export type CurrentUserResponse = {
   roles: string[];
 };
 
-type ApiResponse<T> = {
-  success: boolean;
-  data: T;
-  message: string;
+export type DictionaryResponse = {
+  code: string;
+  name: string;
 };
 
-type ApiErrorResponse = {
-  success: false;
-  errorCode: string;
-  message: string;
-  details: string[];
+export type DictionaryItemResponse = {
+  id: number;
+  name: string;
+  value: string;
+  sortOrder: number;
+  enabled: boolean;
 };
 
 async function parseError(response: Response): Promise<Error> {
@@ -108,4 +108,34 @@ export async function currentUser(token: string): Promise<CurrentUserResponse> {
   });
 
   return unwrapResponse<CurrentUserResponse>(response);
+}
+
+export async function listDictionaries(token: string): Promise<DictionaryResponse[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/dictionaries`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw await parseError(response);
+  }
+
+  return response.json();
+}
+
+export async function listDictionaryItems(token: string, dictCode: string): Promise<DictionaryItemResponse[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/dictionaries/${dictCode}/items`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw await parseError(response);
+  }
+
+  return response.json();
 }
