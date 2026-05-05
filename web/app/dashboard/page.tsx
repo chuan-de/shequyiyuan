@@ -1,0 +1,74 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { CurrentUserResponse, currentUser } from '@/lib/api';
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const [tokenPreview, setTokenPreview] = useState('');
+  const [profile, setProfile] = useState<CurrentUserResponse | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      router.replace('/login');
+      return;
+    }
+
+    setTokenPreview(`${token.slice(0, 40)}...`);
+
+    currentUser(token)
+      .then(setProfile)
+      .catch(() => {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('token_type');
+        setError('登录状态已失效，请重新登录');
+        router.replace('/login');
+      });
+  }, [router]);
+
+  return (
+    <main className="page-wrap page-center">
+      <section className="card space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <p className="hint">已完成前后端认证联调（login/register/me）。</p>
+
+        {profile && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+            <p>
+              当前用户：<strong>{profile.username}</strong>
+            </p>
+            <p>状态：{profile.enabled ? '启用' : '停用'}</p>
+            <p>角色：{profile.roles.join(', ') || '无'}</p>
+          </div>
+        )}
+
+        <p className="text-sm text-slate-700">当前 Token（前 40 字符）：</p>
+        <code className="block overflow-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100">
+          {tokenPreview || '未登录或未获取 token'}
+        </code>
+
+        {error && <p className="error">{error}</p>}
+
+        <div className="flex flex-wrap gap-3">
+          <Link className="btn-secondary" href="/login">
+            去登录页
+          </Link>
+          <button
+            className="btn"
+            onClick={() => {
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('token_type');
+              router.replace('/login');
+            }}
+          >
+            退出登录
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
