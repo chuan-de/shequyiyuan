@@ -22,9 +22,49 @@ export type CurrentUserResponse = {
   roles: string[];
 };
 
+type ApiResponse<T> = {
+  success: boolean;
+  data: T;
+  message: string;
+};
+
+type ApiErrorResponse = {
+  success: false;
+  errorCode: string;
+  message: string;
+  details: string[];
+};
+
 async function parseError(response: Response): Promise<Error> {
   const text = await response.text();
+
+  try {
+    const parsed = JSON.parse(text) as Partial<ApiErrorResponse>;
+    if (parsed && typeof parsed.message === 'string') {
+      const details = Array.isArray(parsed.details) && parsed.details.length > 0
+        ? `: ${parsed.details.join(', ')}`
+        : '';
+      const code = parsed.errorCode ? `[${parsed.errorCode}] ` : '';
+      return new Error(`${code}${parsed.message}${details}`);
+    }
+  } catch {
+    // ignore json parse errors and fallback to plain text
+  }
+
   return new Error(text || `Request failed with status ${response.status}`);
+}
+
+async function unwrapResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    throw await parseError(response);
+  }
+
+  const result = (await response.json()) as ApiResponse<T>;
+  if (!result.success) {
+    throw new Error(result.message || 'Request failed');
+  }
+
+  return result.data;
 }
 
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
@@ -36,11 +76,7 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
     body: JSON.stringify(payload),
   });
 
-  if (!response.ok) {
-    throw await parseError(response);
-  }
-
-  return response.json();
+  return unwrapResponse<AuthResponse>(response);
 }
 
 export async function register(payload: RegisterPayload): Promise<void> {
@@ -52,9 +88,7 @@ export async function register(payload: RegisterPayload): Promise<void> {
     body: JSON.stringify(payload),
   });
 
-  if (!response.ok) {
-    throw await parseError(response);
-  }
+  await unwrapResponse<Record<string, unknown>>(response);
 }
 
 export async function healthCheck(): Promise<{ status: string; service: string; timestamp: string }> {
@@ -62,11 +96,7 @@ export async function healthCheck(): Promise<{ status: string; service: string; 
     cache: 'no-store',
   });
 
-  if (!response.ok) {
-    throw new Error('Backend health check failed');
-  }
-
-  return response.json();
+  return unwrapResponse<{ status: string; service: string; timestamp: string }>(response);
 }
 
 export async function currentUser(token: string): Promise<CurrentUserResponse> {
@@ -77,9 +107,5 @@ export async function currentUser(token: string): Promise<CurrentUserResponse> {
     cache: 'no-store',
   });
 
-  if (!response.ok) {
-    throw await parseError(response);
-  }
-
-  return response.json();
+  return unwrapResponse<CurrentUserResponse>(response);
 }
