@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { login } from '@/lib/api';
 import { writeToken, readToken } from '@/lib/token-storage';
-import { AuthLayout } from '@/components/layout/AuthLayout';
-import { Input } from '@/components/ui/Input';
+import { AuthLayout } from '@/components/layout/auth-layout';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {

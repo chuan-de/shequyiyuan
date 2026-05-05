@@ -2,27 +2,49 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AppShell } from '@/components/layout/app-shell';
+import { Card } from '@/components/ui/card';
+import { LinkButton, Button } from '@/components/ui/button';
 import { CurrentUserResponse, currentUser } from '@/lib/api';
-import Link from 'next/link';
-import { buttonVariantClass } from '@/components/ui/button';
+import { readToken, clearToken } from '@/lib/token-storage';
 
 export default function DashboardPage() {
-  const { user, tokenPreview, loading } = useRequireAuth();
+  const router = useRouter();
+  const [user, setUser] = useState<CurrentUserResponse | null>(null);
+  const [tokenPreview, setTokenPreview] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const token = readToken();
+    if (!token) {
+      router.replace('/login');
+      return;
+    }
+
+    setTokenPreview(token.accessToken.slice(0, 40));
+
+    currentUser(token.accessToken)
+      .then(setUser)
+      .catch(() => {
+        setError('用户信息获取失败，请重新登录');
+        clearToken();
+        router.replace('/login');
+      })
+      .finally(() => setLoading(false));
+  }, [router]);
 
   if (loading) {
     return (
-      <AppShell user={null}>
+      <AppShell title="Dashboard" description="系统状态与账号信息。">
         <Card>加载中...</Card>
       </AppShell>
     );
   }
 
   return (
-    <AppShell user={user}>
+    <AppShell title="Dashboard" description="已完成前后端认证联调（login/register/me）。">
       <Card className="space-y-4">
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="hint">已完成前后端认证联调（login/register/me）。</p>
-
         {user && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
             <p>
@@ -41,24 +63,22 @@ export default function DashboardPage() {
         {error && <p className="error">{error}</p>}
 
         <div className="flex flex-wrap gap-3">
-          <Link href="/login" className={buttonVariantClass('secondary')}>
+          <LinkButton variant="secondary" href="/login">
             去登录页
-          </Link>
-          <Link href="/dictionaries" className={buttonVariantClass('secondary')}>
+          </LinkButton>
+          <LinkButton variant="secondary" href="/dictionaries">
             字典管理
-          </Link>
-          <button
-            className="btn"
+          </LinkButton>
+          <Button
             onClick={() => {
-              localStorage.removeItem('access_token');
-              localStorage.removeItem('token_type');
+              clearToken();
               router.replace('/login');
             }}
           >
             退出登录
-          </button>
+          </Button>
         </div>
-      </section>
-    </main>
+      </Card>
+    </AppShell>
   );
 }

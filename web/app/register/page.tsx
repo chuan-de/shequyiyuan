@@ -4,8 +4,8 @@ import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { register } from '@/lib/api';
-import { AuthLayout } from '@/components/layout/AuthLayout';
-import { Input } from '@/components/ui/Input';
+import { AuthLayout } from '@/components/layout/auth-layout';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 export default function RegisterPage() {
