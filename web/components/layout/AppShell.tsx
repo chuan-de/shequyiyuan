@@ -5,7 +5,7 @@ import { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { CurrentUserResponse } from '@/lib/api';
 import { logout } from '@/lib/auth';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 export function AppShell({ user, children }: { user: CurrentUserResponse | null; children: ReactNode }) {
   const router = useRouter();

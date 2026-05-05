@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
-import { Button, LinkButton } from '@/components/ui/button';
+import Link from 'next/link';
+import { Button, buttonVariantClass } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DictionaryItemResponse, DictionaryResponse, listDictionaries, listDictionaryItems } from '@/lib/api';
 
@@ -89,9 +90,9 @@ export default function DictionariesPage() {
         <Card className="space-y-4 overflow-auto">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">字典项</h2>
-            <LinkButton href="/dashboard" variant="secondary">
+            <Link href="/dashboard" className={buttonVariantClass('secondary')}>
               返回 Dashboard
-            </LinkButton>
+            </Link>
           </div>
 
           {error ? <p className="error">{error}</p> : null}

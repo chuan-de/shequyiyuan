@@ -7,7 +7,7 @@ import { login } from '@/lib/api';
 import { writeToken, readToken } from '@/lib/token-storage';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
   const router = useRouter();
