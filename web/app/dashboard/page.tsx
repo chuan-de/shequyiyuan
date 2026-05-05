@@ -1,9 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CurrentUserResponse, currentUser } from '@/lib/api';
+import { LinkButton } from '@/components/ui/button';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -54,9 +54,12 @@ export default function DashboardPage() {
         {error && <p className="error">{error}</p>}
 
         <div className="flex flex-wrap gap-3">
-          <Link className="btn-secondary" href="/login">
+          <LinkButton variant="secondary" href="/login">
             去登录页
-          </Link>
+          </LinkButton>
+          <LinkButton variant="secondary" href="/dictionaries">
+            字典管理
+          </LinkButton>
           <button
             className="btn"
             onClick={() => {
