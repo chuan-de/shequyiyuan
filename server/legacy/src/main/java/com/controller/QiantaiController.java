@@ -58,7 +58,7 @@ public class QiantaiController {
     @Autowired
     private YonghuService yonghuService;
     @Autowired
-    private YishengService yishengService;
+    private DoctorService yishengService;
 
 
     /**

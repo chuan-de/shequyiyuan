@@ -1,6 +1,6 @@
 package com.entity.model;
 
-import com.entity.YishengEntity;
+import com.entity.DoctorEntity;
 
 import com.baomidou.mybatisplus.annotations.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -15,7 +15,7 @@ import java.io.Serializable;
  *（实际开发中配合移动端接口开发手动去掉些没用的字段， 后端一般用entity就够用了）
  * 取自ModelAndView 的model名称
  */
-public class YishengModel implements Serializable {
+public class DoctorModel implements Serializable {
     private static final long serialVersionUID = 1L;
 
 

@@ -40,12 +40,12 @@ import com.alibaba.fastjson.*;
 */
 @RestController
 @Controller
-@RequestMapping("/yisheng")
-public class YishengController {
-    private static final Logger logger = LoggerFactory.getLogger(YishengController.class);
+@RequestMapping({"/doctor", "/yisheng"}) // /yisheng 将在 2026-12-31 废弃
+public class DoctorController {
+    private static final Logger logger = LoggerFactory.getLogger(DoctorController.class);
 
     @Autowired
-    private YishengService yishengService;
+    private DoctorService doctorService;
 
 
     @Autowired
@@ -80,11 +80,11 @@ public class YishengController {
         if(params.get("orderBy")==null || params.get("orderBy")==""){
             params.put("orderBy","id");
         }
-        PageUtils page = yishengService.queryPage(params);
+        PageUtils page = doctorService.queryPage(params);
 
         //字典表数据转换
-        List<YishengView> list =(List<YishengView>)page.getList();
-        for(YishengView c:list){
+        List<DoctorView> list =(List<DoctorView>)page.getList();
+        for(DoctorView c:list){
             //修改对应字典表字段
             dictionaryService.dictionaryConvert(c, request);
         }
@@ -97,10 +97,10 @@ public class YishengController {
     @RequestMapping("/info/{id}")
     public R info(@PathVariable("id") Long id, HttpServletRequest request){
         logger.debug("info方法:,,Controller:{},,id:{}",this.getClass().getName(),id);
-        YishengEntity yisheng = yishengService.selectById(id);
+        DoctorEntity yisheng = doctorService.selectById(id);
         if(yisheng !=null){
             //entity转view
-            YishengView view = new YishengView();
+            DoctorView view = new DoctorView();
             BeanUtils.copyProperties( yisheng , view );//把实体数据重构到view中
 
             //修改对应字典表字段
@@ -116,14 +116,14 @@ public class YishengController {
     * 后端保存
     */
     @RequestMapping("/save")
-    public R save(@RequestBody YishengEntity yisheng, HttpServletRequest request){
+    public R save(@RequestBody DoctorEntity yisheng, HttpServletRequest request){
         logger.debug("save方法:,,Controller:{},,yisheng:{}",this.getClass().getName(),yisheng.toString());
 
         String role = String.valueOf(request.getSession().getAttribute("role"));
         if(false)
             return R.error(511,"永远不会进入");
 
-        Wrapper<YishengEntity> queryWrapper = new EntityWrapper<YishengEntity>()
+        Wrapper<DoctorEntity> queryWrapper = new EntityWrapper<DoctorEntity>()
             .eq("username", yisheng.getUsername())
             .or()
             .eq("yisheng_phone", yisheng.getYishengPhone())
@@ -134,12 +134,12 @@ public class YishengController {
             ;
 
         logger.info("sql语句:"+queryWrapper.getSqlSegment());
-        YishengEntity yishengEntity = yishengService.selectOne(queryWrapper);
+        DoctorEntity yishengEntity = doctorService.selectOne(queryWrapper);
         if(yishengEntity==null){
             yisheng.setYishengDelete(1);
             yisheng.setCreateTime(new Date());
             yisheng.setPassword("123456");
-            yishengService.insert(yisheng);
+            doctorService.insert(yisheng);
             return R.ok();
         }else {
             return R.error(511,"账户或者联系方式或者医生身份证号已经被使用");
@@ -150,14 +150,14 @@ public class YishengController {
     * 后端修改
     */
     @RequestMapping("/update")
-    public R update(@RequestBody YishengEntity yisheng, HttpServletRequest request){
+    public R update(@RequestBody DoctorEntity yisheng, HttpServletRequest request){
         logger.debug("update方法:,,Controller:{},,yisheng:{}",this.getClass().getName(),yisheng.toString());
 
         String role = String.valueOf(request.getSession().getAttribute("role"));
 //        if(false)
 //            return R.error(511,"永远不会进入");
         //根据字段查询是否有相同数据
-        Wrapper<YishengEntity> queryWrapper = new EntityWrapper<YishengEntity>()
+        Wrapper<DoctorEntity> queryWrapper = new EntityWrapper<DoctorEntity>()
             .notIn("id",yisheng.getId())
             .andNew()
             .eq("username", yisheng.getUsername())
@@ -170,12 +170,12 @@ public class YishengController {
             ;
 
         logger.info("sql语句:"+queryWrapper.getSqlSegment());
-        YishengEntity yishengEntity = yishengService.selectOne(queryWrapper);
+        DoctorEntity yishengEntity = doctorService.selectOne(queryWrapper);
         if("".equals(yisheng.getYishengPhoto()) || "null".equals(yisheng.getYishengPhoto())){
                 yisheng.setYishengPhoto(null);
         }
         if(yishengEntity==null){
-            yishengService.updateById(yisheng);//根据id更新
+            doctorService.updateById(yisheng);//根据id更新
             return R.ok();
         }else {
             return R.error(511,"账户或者联系方式或者医生身份证号已经被使用");
@@ -188,15 +188,15 @@ public class YishengController {
     @RequestMapping("/delete")
     public R delete(@RequestBody Integer[] ids){
         logger.debug("delete:,,Controller:{},,ids:{}",this.getClass().getName(),ids.toString());
-        ArrayList<YishengEntity> list = new ArrayList<>();
+        ArrayList<DoctorEntity> list = new ArrayList<>();
         for(Integer id:ids){
-            YishengEntity yishengEntity = new YishengEntity();
+            DoctorEntity yishengEntity = new DoctorEntity();
             yishengEntity.setId(id);
             yishengEntity.setYishengDelete(2);
             list.add(yishengEntity);
         }
         if(list != null && list.size() >0){
-            yishengService.updateBatchById(list);
+            doctorService.updateBatchById(list);
         }
         return R.ok();
     }
@@ -209,7 +209,7 @@ public class YishengController {
     public R save( String fileName){
         logger.debug("batchInsert方法:,,Controller:{},,fileName:{}",this.getClass().getName(),fileName);
         try {
-            List<YishengEntity> yishengList = new ArrayList<>();//上传的东西
+            List<DoctorEntity> yishengList = new ArrayList<>();//上传的东西
             Map<String, List<String>> seachFields= new HashMap<>();//要查询的字段
             Date date = new Date();
             int lastIndexOf = fileName.lastIndexOf(".");
@@ -229,7 +229,7 @@ public class YishengController {
                         dataList.remove(0);//删除第一行，因为第一行是提示
                         for(List<String> data:dataList){
                             //循环
-                            YishengEntity yishengEntity = new YishengEntity();
+                            DoctorEntity yishengEntity = new DoctorEntity();
 //                            yishengEntity.setYishengUuidNumber(data.get(0));                    //工号 要改的
 //                            yishengEntity.setUsername(data.get(0));                    //账户 要改的
 //                            //yishengEntity.setPassword("123456");//密码
@@ -285,42 +285,42 @@ public class YishengController {
 
                         //查询是否重复
                          //工号
-                        List<YishengEntity> yishengEntities_yishengUuidNumber = yishengService.selectList(new EntityWrapper<YishengEntity>().in("yisheng_uuid_number", seachFields.get("yishengUuidNumber")).eq("yisheng_delete", 1));
+                        List<DoctorEntity> yishengEntities_yishengUuidNumber = doctorService.selectList(new EntityWrapper<DoctorEntity>().in("yisheng_uuid_number", seachFields.get("yishengUuidNumber")).eq("yisheng_delete", 1));
                         if(yishengEntities_yishengUuidNumber.size() >0 ){
                             ArrayList<String> repeatFields = new ArrayList<>();
-                            for(YishengEntity s:yishengEntities_yishengUuidNumber){
+                            for(DoctorEntity s:yishengEntities_yishengUuidNumber){
                                 repeatFields.add(s.getYishengUuidNumber());
                             }
                             return R.error(511,"数据库的该表中的 [工号] 字段已经存在 存在数据为:"+repeatFields.toString());
                         }
                          //账户
-                        List<YishengEntity> yishengEntities_username = yishengService.selectList(new EntityWrapper<YishengEntity>().in("username", seachFields.get("username")).eq("yisheng_delete", 1));
+                        List<DoctorEntity> yishengEntities_username = doctorService.selectList(new EntityWrapper<DoctorEntity>().in("username", seachFields.get("username")).eq("yisheng_delete", 1));
                         if(yishengEntities_username.size() >0 ){
                             ArrayList<String> repeatFields = new ArrayList<>();
-                            for(YishengEntity s:yishengEntities_username){
+                            for(DoctorEntity s:yishengEntities_username){
                                 repeatFields.add(s.getUsername());
                             }
                             return R.error(511,"数据库的该表中的 [账户] 字段已经存在 存在数据为:"+repeatFields.toString());
                         }
                          //联系方式
-                        List<YishengEntity> yishengEntities_yishengPhone = yishengService.selectList(new EntityWrapper<YishengEntity>().in("yisheng_phone", seachFields.get("yishengPhone")).eq("yisheng_delete", 1));
+                        List<DoctorEntity> yishengEntities_yishengPhone = doctorService.selectList(new EntityWrapper<DoctorEntity>().in("yisheng_phone", seachFields.get("yishengPhone")).eq("yisheng_delete", 1));
                         if(yishengEntities_yishengPhone.size() >0 ){
                             ArrayList<String> repeatFields = new ArrayList<>();
-                            for(YishengEntity s:yishengEntities_yishengPhone){
+                            for(DoctorEntity s:yishengEntities_yishengPhone){
                                 repeatFields.add(s.getYishengPhone());
                             }
                             return R.error(511,"数据库的该表中的 [联系方式] 字段已经存在 存在数据为:"+repeatFields.toString());
                         }
                          //医生身份证号
-                        List<YishengEntity> yishengEntities_yishengIdNumber = yishengService.selectList(new EntityWrapper<YishengEntity>().in("yisheng_id_number", seachFields.get("yishengIdNumber")).eq("yisheng_delete", 1));
+                        List<DoctorEntity> yishengEntities_yishengIdNumber = doctorService.selectList(new EntityWrapper<DoctorEntity>().in("yisheng_id_number", seachFields.get("yishengIdNumber")).eq("yisheng_delete", 1));
                         if(yishengEntities_yishengIdNumber.size() >0 ){
                             ArrayList<String> repeatFields = new ArrayList<>();
-                            for(YishengEntity s:yishengEntities_yishengIdNumber){
+                            for(DoctorEntity s:yishengEntities_yishengIdNumber){
                                 repeatFields.add(s.getYishengIdNumber());
                             }
                             return R.error(511,"数据库的该表中的 [医生身份证号] 字段已经存在 存在数据为:"+repeatFields.toString());
                         }
-                        yishengService.insertBatch(yishengList);
+                        doctorService.insertBatch(yishengList);
                         return R.ok();
                     }
                 }
@@ -337,7 +337,7 @@ public class YishengController {
     @IgnoreAuth
     @RequestMapping(value = "/login")
     public R login(String username, String password, String captcha, HttpServletRequest request) {
-        YishengEntity yisheng = yishengService.selectOne(new EntityWrapper<YishengEntity>().eq("username", username));
+        DoctorEntity yisheng = doctorService.selectOne(new EntityWrapper<DoctorEntity>().eq("username", username));
         if(yisheng==null || !yisheng.getPassword().equals(password))
             return R.error("账号或密码不正确");
         else if(yisheng.getYishengDelete() != 1)
@@ -362,9 +362,9 @@ public class YishengController {
     */
     @IgnoreAuth
     @PostMapping(value = "/register")
-    public R register(@RequestBody YishengEntity yisheng){
+    public R register(@RequestBody DoctorEntity yisheng){
 //    	ValidatorUtils.validateEntity(user);
-        Wrapper<YishengEntity> queryWrapper = new EntityWrapper<YishengEntity>()
+        Wrapper<DoctorEntity> queryWrapper = new EntityWrapper<DoctorEntity>()
             .eq("username", yisheng.getUsername())
             .or()
             .eq("yisheng_phone", yisheng.getYishengPhone())
@@ -373,12 +373,12 @@ public class YishengController {
             .andNew()
             .eq("yisheng_delete", 1)
             ;
-        YishengEntity yishengEntity = yishengService.selectOne(queryWrapper);
+        DoctorEntity yishengEntity = doctorService.selectOne(queryWrapper);
         if(yishengEntity != null)
             return R.error("账户或者联系方式或者医生身份证号已经被使用");
         yisheng.setYishengDelete(1);
         yisheng.setCreateTime(new Date());
-        yishengService.insert(yisheng);
+        doctorService.insert(yisheng);
         return R.ok();
     }
 
@@ -387,10 +387,10 @@ public class YishengController {
      */
     @GetMapping(value = "/resetPassword")
     public R resetPassword(Integer  id){
-        YishengEntity yisheng = new YishengEntity();
+        DoctorEntity yisheng = new DoctorEntity();
         yisheng.setPassword("123456");
         yisheng.setId(id);
-        yishengService.updateById(yisheng);
+        doctorService.updateById(yisheng);
         return R.ok();
     }
 
@@ -401,10 +401,10 @@ public class YishengController {
     @IgnoreAuth
     @RequestMapping(value = "/resetPass")
     public R resetPass(String username, HttpServletRequest request) {
-        YishengEntity yisheng = yishengService.selectOne(new EntityWrapper<YishengEntity>().eq("username", username));
+        DoctorEntity yisheng = doctorService.selectOne(new EntityWrapper<DoctorEntity>().eq("username", username));
         if(yisheng!=null){
             yisheng.setPassword("123456");
-            boolean b = yishengService.updateById(yisheng);
+            boolean b = doctorService.updateById(yisheng);
             if(!b){
                return R.error();
             }
@@ -421,10 +421,10 @@ public class YishengController {
     @RequestMapping("/session")
     public R getCurrYisheng(HttpServletRequest request){
         Integer id = (Integer)request.getSession().getAttribute("userId");
-        YishengEntity yisheng = yishengService.selectById(id);
+        DoctorEntity yisheng = doctorService.selectById(id);
         if(yisheng !=null){
             //entity转view
-            YishengView view = new YishengView();
+            DoctorView view = new DoctorView();
             BeanUtils.copyProperties( yisheng , view );//把实体数据重构到view中
 
             //修改对应字典表字段
