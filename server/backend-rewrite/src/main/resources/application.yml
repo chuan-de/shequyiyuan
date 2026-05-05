@@ -23,10 +23,15 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: always
+
+observability:
+  alert-thresholds:
+    p95-latency-ms: 500
+    error-rate: 0.05
 
 server:
   port: 8080
