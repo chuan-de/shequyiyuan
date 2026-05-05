@@ -1,3 +1,11 @@
+# ⚠️ DEPRECATED DIRECTORY
+
+> `backend-rewrite/` 为历史副本目录，**不是当前迭代主线后端目录**。
+>
+> 当前唯一后端主线请使用：`server/backend-rewrite/`。
+
+---
+
 # hospital-backend-rewrite
 
 Spring Boot 3.x backend rewrite baseline using package prefix `com.hospital`.
@@ -13,27 +21,3 @@ Spring Boot 3.x backend rewrite baseline using package prefix `com.hospital`.
 ```bash
 mvn spring-boot:run
 ```
-
-## API quick start
-- `POST /api/v1/auth/register`
-  - body: `{ "username": "alice", "password": "password123" }`
-- `POST /api/v1/auth/login`
-  - body: `{ "username": "alice", "password": "password123" }`
-  - returns bearer token
-- `GET /api/v1/health`
-
-## Configuration
-Set a secure JWT secret before production use:
-
-```yaml
-security:
-  jwt:
-    secret: replace-with-a-32-byte-minimum-secret-key
-    access-token-ttl: 1h
-```
-
-## Next milestones
-1. Replace JDBC auth queries with dedicated repository/domain services.
-2. Introduce RBAC permission checks by business module.
-3. Migrate legacy schema into normalized PostgreSQL schema.
-4. Add integration tests for auth and migration scripts.

@@ -1,0 +1,20 @@
+name: mainline-path-guard
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  path-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run mainline path guard
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            ./scripts/check-mainline-paths.sh "origin/${{ github.base_ref }}" "${{ github.sha }}"
+          else
+            ./scripts/check-mainline-paths.sh "${{ github.event.before }}" "${{ github.sha }}"
+          fi
