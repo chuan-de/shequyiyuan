@@ -27,6 +27,13 @@ public class ApiExceptionHandler {
             .body(ApiErrorResponse.of(ErrorCode.VALIDATION_ERROR, "Validation failed", details));
     }
 
+
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ApiErrorResponse> handleForbidden(SecurityException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(ApiErrorResponse.of(ErrorCode.FORBIDDEN, ex.getMessage(), List.of()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnknown(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
