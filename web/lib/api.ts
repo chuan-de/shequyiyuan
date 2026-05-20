@@ -33,7 +33,11 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> { retu
 export async function register(payload: RegisterPayload): Promise<void> { await unwrapResponse<Record<string,unknown>>(await apiFetch(API_ROUTES.authRegister,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})); }
 export async function healthCheck(): Promise<HealthResponse> { return unwrapResponse(await apiFetch(API_ROUTES.health,{cache:'no-store'})); }
 export async function currentUser(token: string): Promise<CurrentUserResponse> { return unwrapResponse(await apiFetch(API_ROUTES.authCurrentUser,{headers:authHeader(token),cache:'no-store'})); }
-export async function listDictionaries(token: string): Promise<DictionaryResponse[]> { return unwrapResponse(await apiFetch(API_ROUTES.dictionaries,{headers:authHeader(token),cache:'no-store'})); }
+export async function listDictionaries(token: string): Promise<DictionaryResponse[]> {
+  const data = await unwrapResponse<DictionaryResponse[] | PageResponse<DictionaryResponse>>(await apiFetch(API_ROUTES.dictionaries,{headers:authHeader(token),cache:'no-store'}));
+  if (Array.isArray(data)) return data;
+  return Array.isArray(data?.records) ? data.records : [];
+}
 export async function queryDictionaryItems(token: string, query: ListQuery & { dictCode: string }): Promise<PageResponse<DictionaryItemResponse>> {
   const p = new URLSearchParams();
   ['page','size','itemName','sortBy','sortDir'].forEach((k)=>{
