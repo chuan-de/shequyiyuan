@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend (server/backend-rewrite)",
+      "type": "java",
+      "request": "launch",
+      "mainClass": "com.hospital.HospitalApplication",
+      "cwd": "${workspaceFolder}/server/backend-rewrite"
+    }
+  ]
+}

@@ -22,6 +22,21 @@ This repository is now organized as a two-app workspace:
 cd server/backend-rewrite && mvn spring-boot:run
 ```
 
+## 团队脚本 / CI / IDE 统一约束
+
+- 团队脚本、CI、IDE Run Configuration 一律使用 `server/backend-rewrite/` 作为后端运行入口。
+- 显式禁止使用根目录 `backend-rewrite/` 作为运行入口（该目录仅归档，不参与构建联调）。
+
+常用快捷命令：
+
+```bash
+# Backend
+cd server/backend-rewrite && mvn spring-boot:run
+
+# Frontend
+cd web && npm run dev
+```
+
 ## 本地启动
 
 1. 启动 PostgreSQL：
@@ -94,6 +109,15 @@ curl http://localhost:8080/api/v1/auth/me \
 - **Postgres 未启动**：执行 `docker compose ps` 确认 `postgres` 服务状态，必要时重新执行 `docker compose up -d postgres`。
 - **Flyway migration 失败**：查看后端启动日志与数据库连接配置，确认数据库可连接且迁移脚本版本连续、未重复执行。
 - **JWT secret 过短**：检查后端 JWT 配置，确保 secret 长度满足签名算法要求（建议至少 32 字节）。
+
+### 前端联调：后端启动路径核对清单
+
+前端联调前请逐项确认：
+
+1. 后端启动目录为 `server/backend-rewrite/`（不是根目录 `backend-rewrite/`）。
+2. 启动命令为 `cd server/backend-rewrite && mvn spring-boot:run`。
+3. `web/.env.local` 中 `NEXT_PUBLIC_API_BASE_URL` 指向当前后端地址（默认 `http://localhost:8080`）。
+4. 访问 `http://localhost:8080/api/v1/health` 返回成功后再进行页面联调。
 
 ## 团队前端规范（补充）
 
