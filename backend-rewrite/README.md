@@ -1,3 +1,8 @@
+> [!WARNING]
+> 该目录是历史副本（archive snapshot），仅用于对照，**禁止作为运行入口**。
+>
+> 当前唯一可运行后端目录：`server/backend-rewrite/`。
+
 # ⚠️ DEPRECATED DIRECTORY
 
 > `backend-rewrite/` 为历史副本目录，**不是当前迭代主线后端目录**。

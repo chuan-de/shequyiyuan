@@ -11,6 +11,17 @@ This repository is now organized as a two-app workspace:
 - `server/backend-rewrite/`: Spring Boot 3 rewrite project (`com.hospital`)
 - `web/`: independent Next.js app for frontend rewrite
 
+## 当前生产/开发入口模块（唯一）
+
+- ✅ **当前后端唯一入口目录：`server/backend-rewrite/`**
+- ❌ 根目录下的 `backend-rewrite/` 仅为历史副本，不参与当前开发、联调、CI 与发布。
+
+请统一使用以下命令启动后端：
+
+```bash
+cd server/backend-rewrite && mvn spring-boot:run
+```
+
 ## 本地启动
 
 1. 启动 PostgreSQL：
