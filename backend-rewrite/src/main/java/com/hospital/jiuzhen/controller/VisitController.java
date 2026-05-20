@@ -18,25 +18,25 @@ public class VisitController {
     public VisitController(VisitService service) { this.service = service; }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('visit:read')")
+    @PreAuthorize("hasAuthority('visits:read')")
     public List<VisitRecord> list(@RequestParam(required = false) String keyword, @RequestParam(required = false) VisitStatus status) {
         return service.list(keyword, status);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('visit:read')")
+    @PreAuthorize("hasAuthority('visits:read')")
     public VisitRecord detail(@PathVariable Long id) { return service.detail(id); }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('visit:write')")
+    @PreAuthorize("hasAuthority('visits:write')")
     public VisitRecord create(@RequestBody @Valid VisitUpsertRequest req, Principal p) { return service.create(req, p == null ? "system" : p.getName()); }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('visit:write')")
+    @PreAuthorize("hasAuthority('visits:write')")
     public VisitRecord update(@PathVariable Long id, @RequestBody @Valid VisitUpsertRequest req, Principal p) { return service.update(id, req, p == null ? "system" : p.getName()); }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAuthority('visit:status')")
+    @PreAuthorize("hasAuthority('visits:status')")
     public VisitRecord status(@PathVariable Long id, @RequestBody @Valid VisitStatusChangeRequest req, Principal p) {
         return service.changeStatus(id, req.targetStatus(), p == null ? "system" : p.getName());
     }
