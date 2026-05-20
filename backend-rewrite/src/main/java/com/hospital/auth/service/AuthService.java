@@ -1,11 +1,16 @@
 package com.hospital.auth.service;
 
 import com.hospital.auth.dto.AuthResponse;
+import com.hospital.auth.dto.CurrentUserResponse;
 import com.hospital.auth.dto.LoginRequest;
 import com.hospital.auth.dto.RegisterRequest;
 import com.hospital.auth.security.JwtProperties;
 import com.hospital.auth.security.JwtService;
 import com.hospital.user.service.AuthUserDetailsService;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -53,6 +58,45 @@ public class AuthService {
 
         String token = jwtService.generateToken(request.username(), roleCode);
         return new AuthResponse(token, "Bearer", jwtProperties.accessTokenTtl().toSeconds());
+    }
+
+    public CurrentUserResponse currentUser(String username) {
+        Map<String, Object> user = jdbcClient.sql("""
+                SELECT id, username, enabled
+                FROM app_user
+                WHERE username = :username
+            """)
+            .param("username", username)
+            .query()
+            .singleRow();
+
+        Long userId = ((Number) user.get("id")).longValue();
+        boolean enabled = Boolean.TRUE.equals(user.get("enabled"));
+
+        List<String> roles = jdbcClient.sql("""
+                SELECT DISTINCT r.role_code
+                FROM app_user_role ur
+                JOIN app_role r ON r.id = ur.role_id
+                WHERE ur.user_id = :userId
+                ORDER BY r.role_code
+            """)
+            .param("userId", userId)
+            .query(String.class)
+            .list();
+
+        Set<String> permissions = new LinkedHashSet<>(jdbcClient.sql("""
+                SELECT DISTINCT p.permission_code
+                FROM app_user_role ur
+                JOIN app_role_permission rp ON rp.role_id = ur.role_id
+                JOIN app_permission p ON p.id = rp.permission_id
+                WHERE ur.user_id = :userId
+                ORDER BY p.permission_code
+            """)
+            .param("userId", userId)
+            .query(String.class)
+            .list());
+
+        return new CurrentUserResponse((String) user.get("username"), enabled, roles, List.copyOf(permissions));
     }
 
     @Transactional

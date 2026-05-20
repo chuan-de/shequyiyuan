@@ -1,10 +1,12 @@
 package com.hospital.auth.controller;
 
 import com.hospital.auth.dto.AuthResponse;
+import com.hospital.auth.dto.CurrentUserResponse;
 import com.hospital.auth.dto.LoginRequest;
 import com.hospital.auth.dto.RegisterRequest;
 import com.hospital.auth.service.AuthService;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -33,5 +36,11 @@ public class AuthController {
     public Map<String, Object> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
         return Map.of("message", "registered");
+    }
+
+    @GetMapping("/me")
+    public Map<String, Object> me(Principal principal) {
+        CurrentUserResponse currentUser = authService.currentUser(principal.getName());
+        return Map.of("success", true, "data", currentUser);
     }
 }
