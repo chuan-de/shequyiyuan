@@ -1,3 +1,6 @@
+-- Preconditions:
+-- 1) requires app_role already exists
+-- 2) this script creates app_permission/app_role_permission, then seeds initial RBAC data
 CREATE TABLE IF NOT EXISTS app_permission (
     id BIGSERIAL PRIMARY KEY,
     permission_code VARCHAR(100) NOT NULL UNIQUE,
@@ -20,6 +23,9 @@ VALUES
   ('configs:read', '配置读取'), ('configs:write', '配置写入'), ('configs:status', '配置状态变更')
 ON CONFLICT (permission_code) DO NOTHING;
 
+-- Preconditions for data seed:
+-- requires app_permission/app_role_permission already exists in this script,
+-- and app_role contains ADMIN/USER role codes.
 INSERT INTO app_role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM app_role r
@@ -27,6 +33,9 @@ JOIN app_permission p ON p.permission_code = 'dictionary:read'
 WHERE r.role_code IN ('ADMIN','USER')
 ON CONFLICT DO NOTHING;
 
+-- Preconditions for data seed:
+-- requires app_permission/app_role_permission already exists in this script,
+-- and app_role contains ADMIN role code.
 INSERT INTO app_role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM app_role r
