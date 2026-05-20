@@ -14,7 +14,7 @@ This repository is now organized as a two-app workspace:
 ## 当前生产/开发入口模块（唯一）
 
 - ✅ **当前后端唯一入口目录：`server/backend-rewrite/`**
-- ❌ 根目录下的 `backend-rewrite/` 仅为历史副本，不参与当前开发、联调、CI 与发布。
+- ❌ 根目录下的 `backend-rewrite_deprecated_20260520/` 仅为历史副本，不参与当前开发、联调、CI 与发布。
 
 请统一使用以下命令启动后端：
 
@@ -25,7 +25,7 @@ cd server/backend-rewrite && mvn spring-boot:run
 ## 团队脚本 / CI / IDE 统一约束
 
 - 团队脚本、CI、IDE Run Configuration 一律使用 `server/backend-rewrite/` 作为后端运行入口。
-- 显式禁止使用根目录 `backend-rewrite/` 作为运行入口（该目录仅归档，不参与构建联调）。
+- 显式禁止使用根目录 `backend-rewrite_deprecated_20260520/` 作为运行入口（该目录仅归档，不参与构建联调）。
 
 常用快捷命令：
 
@@ -114,7 +114,7 @@ curl http://localhost:8080/api/v1/auth/me \
 
 前端联调前请逐项确认：
 
-1. 后端启动目录为 `server/backend-rewrite/`（不是根目录 `backend-rewrite/`）。
+1. 后端启动目录为 `server/backend-rewrite/`（不是根目录 `backend-rewrite_deprecated_20260520/`）。
 2. 启动命令为 `cd server/backend-rewrite && mvn spring-boot:run`。
 3. `web/.env.local` 中 `NEXT_PUBLIC_API_BASE_URL` 指向当前后端地址（默认 `http://localhost:8080`）。
 4. 访问 `http://localhost:8080/api/v1/health` 返回成功后再进行页面联调。

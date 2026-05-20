@@ -1,11 +1,7 @@
 package com.hospital.user.service;
 
-import com.hospital.auth.entity.AppUser;
-import com.hospital.auth.repository.AppRolePermissionRepository;
-import com.hospital.auth.repository.AppUserRepository;
-import com.hospital.auth.repository.AppUserRoleRepository;
-import java.util.LinkedHashSet;
 import java.util.List;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
@@ -13,53 +9,58 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthUserDetailsService implements UserDetailsService {
 
-    private final AppUserRepository appUserRepository;
-    private final AppUserRoleRepository appUserRoleRepository;
-    private final AppRolePermissionRepository appRolePermissionRepository;
+    private final JdbcClient jdbcClient;
 
-    public AuthUserDetailsService(AppUserRepository appUserRepository, AppUserRoleRepository appUserRoleRepository, AppRolePermissionRepository appRolePermissionRepository) {
-        this.appUserRepository = appUserRepository;
-        this.appUserRoleRepository = appUserRoleRepository;
-        this.appRolePermissionRepository = appRolePermissionRepository;
+    public AuthUserDetailsService(JdbcClient jdbcClient) {
+        this.jdbcClient = jdbcClient;
     }
 
     @Override
-    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        AppUser user = appUserRepository.findByUsername(username)
+        AuthUserRow userRow = jdbcClient.sql("""
+                SELECT id, username, password_hash, enabled
+                FROM app_user
+                WHERE username = :username
+            """)
+            .param("username", username)
+            .query(AuthUserRow.class)
+            .optional()
             .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-        var userRoles = appUserRoleRepository.findByIdUserIdWithRole(user.getId());
-
-        List<Long> roleIds = userRoles.stream()
-            .map(link -> link.getRole().getId())
-            .toList();
-
-        List<GrantedAuthority> roles = userRoles.stream()
-            .map(link -> new SimpleGrantedAuthority("ROLE_" + link.getRole().getRoleCode()))
+        List<GrantedAuthority> authorities = jdbcClient.sql("""
+                SELECT authority_code
+                FROM (
+                    SELECT CONCAT('ROLE_', r.role_code) AS authority_code
+                    FROM app_user_role ur
+                    JOIN app_role r ON ur.role_id = r.id
+                    WHERE ur.user_id = :userId
+                    UNION
+                    SELECT p.permission_code AS authority_code
+                    FROM app_user_role ur
+                    JOIN app_role_permission rp ON ur.role_id = rp.role_id
+                    JOIN app_permission p ON rp.permission_id = p.id
+                    WHERE ur.user_id = :userId
+                ) t
+            """)
+            .param("userId", userRow.id())
+            .query(String.class)
+            .list()
+            .stream()
+            .map(SimpleGrantedAuthority::new)
             .map(GrantedAuthority.class::cast)
             .toList();
 
-        List<GrantedAuthority> permissions = roleIds.isEmpty()
-            ? List.of()
-            : appRolePermissionRepository.findByIdRoleIdInWithPermission(roleIds)
-                .stream()
-                .map(link -> new SimpleGrantedAuthority(link.getPermission().getPermissionCode()))
-                .map(GrantedAuthority.class::cast)
-                .toList();
-
-        List<GrantedAuthority> authorities = new java.util.ArrayList<>(new LinkedHashSet<>(roles));
-        authorities.addAll(new LinkedHashSet<>(permissions));
-
-        return User.withUsername(user.getUsername())
-            .password(user.getPasswordHash())
+        return User.withUsername(userRow.username())
+            .password(userRow.passwordHash())
             .authorities(authorities)
-            .disabled(!user.getEnabled())
+            .disabled(!userRow.enabled())
             .build();
+    }
+
+    public record AuthUserRow(Long id, String username, String passwordHash, Boolean enabled) {
     }
 }
