@@ -59,8 +59,7 @@ public class JiuankangdanganView extends JiuankangdanganEntity implements Serial
 		try {
 			BeanUtils.copyProperties(this, jiuankangdanganEntity);
 		} catch (IllegalAccessException | InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new RuntimeException("Failed to copy properties in " + this.getClass().getSimpleName(), e);
 		}
 	}
 

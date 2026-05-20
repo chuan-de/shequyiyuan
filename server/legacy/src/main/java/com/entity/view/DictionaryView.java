@@ -29,8 +29,7 @@ public class DictionaryView extends DictionaryEntity implements Serializable {
 		try {
 			BeanUtils.copyProperties(this, dictionaryEntity);
 		} catch (IllegalAccessException | InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new RuntimeException("Failed to copy properties in " + this.getClass().getSimpleName(), e);
 		}
 	}
 

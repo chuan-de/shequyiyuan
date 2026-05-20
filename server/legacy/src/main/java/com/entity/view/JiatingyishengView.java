@@ -33,8 +33,7 @@ public class JiatingyishengView extends JiatingyishengEntity implements Serializ
 		try {
 			BeanUtils.copyProperties(this, jiatingyishengEntity);
 		} catch (IllegalAccessException | InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new RuntimeException("Failed to copy properties in " + this.getClass().getSimpleName(), e);
 		}
 	}
 

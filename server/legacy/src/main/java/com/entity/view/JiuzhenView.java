@@ -59,8 +59,7 @@ public class JiuzhenView extends JiuzhenEntity implements Serializable {
 		try {
 			BeanUtils.copyProperties(this, jiuzhenEntity);
 		} catch (IllegalAccessException | InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new RuntimeException("Failed to copy properties in " + this.getClass().getSimpleName(), e);
 		}
 	}
 
