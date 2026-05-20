@@ -1,3 +1,4 @@
+'use client';
 import { EntityManagementPage } from '@/components/business/entity-management-page';
 import { configsPageConfig } from '@/components/business/forms/entity-form-configs';
 
