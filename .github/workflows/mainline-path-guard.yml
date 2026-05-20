@@ -7,12 +7,15 @@ on:
 jobs:
   path-guard:
     runs-on: ubuntu-latest
+    env:
+      BACKEND_ENTRY_DIR: server/backend-rewrite
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Run mainline path guard
         run: |
+          echo "Backend entry dir: ${BACKEND_ENTRY_DIR}"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             ./scripts/check-mainline-paths.sh "origin/${{ github.base_ref }}" "${{ github.sha }}"
           else

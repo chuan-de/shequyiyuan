@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Backend (server/backend-rewrite)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="backend-rewrite" />
+    <option name="MAIN_CLASS_NAME" value="com.hospital.HospitalApplication" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/server/backend-rewrite" />
+    <method v="2" />
+  </configuration>
+</component>
