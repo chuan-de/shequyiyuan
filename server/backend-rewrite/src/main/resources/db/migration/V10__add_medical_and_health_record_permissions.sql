@@ -1,3 +1,6 @@
+-- Preconditions:
+-- 1) requires V8/V9 已执行（app_permission/app_role_permission 已存在）
+-- 2) this is data-only migration; do not add/alter table structure here
 INSERT INTO app_permission (permission_code, permission_name)
 VALUES
   ('medical-records:read', '病历读取'),

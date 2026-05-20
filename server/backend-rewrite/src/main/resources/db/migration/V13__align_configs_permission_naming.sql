@@ -1,5 +1,6 @@
--- Align legacy config:* permission codes to configs:* after RBAC tables are created in V8.
--- Keep this migration idempotent so it is safe to rerun.
+-- Preconditions:
+-- 1) requires V8/V9 已执行（app_permission/app_role_permission 已存在）
+-- 2) this is data-adjustment migration; keep it idempotent
 INSERT INTO app_permission (permission_code, permission_name)
 VALUES
   ('configs:read', '配置读取'),

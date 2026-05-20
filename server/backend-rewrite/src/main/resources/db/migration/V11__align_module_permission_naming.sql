@@ -1,8 +1,6 @@
--- Align module permission naming with frontend convention: kebab-case + plural
 -- Preconditions:
--- 1) requires app_permission already exists (from structure migration, e.g. V8/V9)
--- 2) requires app_role_permission already exists (from structure migration, e.g. V8/V9)
--- 3) this is a data-adjustment migration and must run after RBAC structure creation
+-- 1) requires V8/V9/V10 已执行（RBAC 基础数据已存在）
+-- 2) this is data-adjustment migration and must run after permission seeding
 INSERT INTO app_permission (permission_code, permission_name)
 VALUES
   ('medications:read', '药品读取'),
