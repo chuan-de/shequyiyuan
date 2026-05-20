@@ -29,17 +29,17 @@ public class BingliController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('bingli:read')")
-    public BingliRecord detail(@PathVariable Long id) { return service.detail(id); }
+    public ApiResponse<BingliRecord> detail(@PathVariable Long id) { return ApiResponse.ok(service.detail(id)); }
 
     @PostMapping
     @PreAuthorize("hasAuthority('bingli:write')")
-    public BingliRecord create(@RequestBody @Valid BingliUpsertRequest request, Principal principal) { return service.create(request, principal == null ? "system" : principal.getName()); }
+    public ApiResponse<BingliRecord> create(@RequestBody @Valid BingliUpsertRequest request, Principal principal) { return ApiResponse.ok(service.create(request, principal == null ? "system" : principal.getName())); }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('bingli:write')")
-    public BingliRecord update(@PathVariable Long id, @RequestBody @Valid BingliUpsertRequest request, Principal principal) { return service.update(id, request, principal == null ? "system" : principal.getName()); }
+    public ApiResponse<BingliRecord> update(@PathVariable Long id, @RequestBody @Valid BingliUpsertRequest request, Principal principal) { return ApiResponse.ok(service.update(id, request, principal == null ? "system" : principal.getName())); }
 
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAuthority('bingli:status')")
-    public BingliRecord status(@PathVariable Long id, @RequestBody @Valid BingliStatusChangeRequest request, Principal principal) { return service.changeStatus(id, request.targetStatus(), principal == null ? "system" : principal.getName()); }
+    public ApiResponse<BingliRecord> status(@PathVariable Long id, @RequestBody @Valid BingliStatusChangeRequest request, Principal principal) { return ApiResponse.ok(service.changeStatus(id, request.targetStatus(), principal == null ? "system" : principal.getName())); }
 }

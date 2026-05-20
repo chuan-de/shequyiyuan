@@ -29,23 +29,23 @@ public class JiuankangdanganController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('jiuankangdangan:read')")
-    public JiuankangdanganRecord detail(@PathVariable Long id) { return service.detail(id); }
+    public ApiResponse<JiuankangdanganRecord> detail(@PathVariable Long id) { return ApiResponse.ok(service.detail(id)); }
 
     @PostMapping
     @PreAuthorize("hasAuthority('jiuankangdangan:write')")
-    public JiuankangdanganRecord create(@RequestBody @Valid JiuankangdanganUpsertRequest request, Principal principal) {
-        return service.create(request, principal == null ? "system" : principal.getName());
+    public ApiResponse<JiuankangdanganRecord> create(@RequestBody @Valid JiuankangdanganUpsertRequest request, Principal principal) {
+        return ApiResponse.ok(service.create(request, principal == null ? "system" : principal.getName()));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('jiuankangdangan:write')")
-    public JiuankangdanganRecord update(@PathVariable Long id, @RequestBody @Valid JiuankangdanganUpsertRequest request, Principal principal) {
-        return service.update(id, request, principal == null ? "system" : principal.getName());
+    public ApiResponse<JiuankangdanganRecord> update(@PathVariable Long id, @RequestBody @Valid JiuankangdanganUpsertRequest request, Principal principal) {
+        return ApiResponse.ok(service.update(id, request, principal == null ? "system" : principal.getName()));
     }
 
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAuthority('jiuankangdangan:status')")
-    public JiuankangdanganRecord status(@PathVariable Long id, @RequestBody @Valid JiuankangdanganStatusChangeRequest request, Principal principal) {
-        return service.changeStatus(id, request.targetStatus(), principal == null ? "system" : principal.getName());
+    public ApiResponse<JiuankangdanganRecord> status(@PathVariable Long id, @RequestBody @Valid JiuankangdanganStatusChangeRequest request, Principal principal) {
+        return ApiResponse.ok(service.changeStatus(id, request.targetStatus(), principal == null ? "system" : principal.getName()));
     }
 }
