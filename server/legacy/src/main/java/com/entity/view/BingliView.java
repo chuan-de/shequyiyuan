@@ -85,8 +85,7 @@ public class BingliView extends BingliEntity implements Serializable {
 		try {
 			BeanUtils.copyProperties(this, bingliEntity);
 		} catch (IllegalAccessException | InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new RuntimeException("Failed to copy properties in " + this.getClass().getSimpleName(), e);
 		}
 	}
 

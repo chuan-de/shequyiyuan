@@ -29,8 +29,7 @@ public class YaopinView extends YaopinEntity implements Serializable {
 		try {
 			BeanUtils.copyProperties(this, yaopinEntity);
 		} catch (IllegalAccessException | InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			throw new RuntimeException("Failed to copy properties in " + this.getClass().getSimpleName(), e);
 		}
 	}
 
