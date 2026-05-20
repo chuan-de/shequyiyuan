@@ -17,7 +17,7 @@ VALUES
   ('medication:read', '药品读取'), ('medication:write', '药品写入'), ('medication:status', '药品状态变更'),
   ('familyDoctor:read', '家庭医生读取'), ('familyDoctor:write', '家庭医生写入'), ('familyDoctor:status', '家庭医生状态变更'),
   ('visit:read', '就诊读取'), ('visit:write', '就诊写入'), ('visit:status', '就诊状态变更'),
-  ('config:read', '配置读取'), ('config:write', '配置写入'), ('config:status', '配置状态变更')
+  ('configs:read', '配置读取'), ('configs:write', '配置写入'), ('configs:status', '配置状态变更')
 ON CONFLICT (permission_code) DO NOTHING;
 
 INSERT INTO app_role_permission (role_id, permission_id)
@@ -35,7 +35,7 @@ JOIN app_permission p ON p.permission_code IN (
   'medication:read','medication:write','medication:status',
   'familyDoctor:read','familyDoctor:write','familyDoctor:status',
   'visit:read','visit:write','visit:status',
-  'config:read','config:write','config:status'
+  'configs:read','configs:write','configs:status'
 )
 WHERE r.role_code = 'ADMIN'
 ON CONFLICT DO NOTHING;
