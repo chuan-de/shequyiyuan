@@ -1,3 +1,4 @@
+'use client';
 import { EntityManagementPage } from '@/components/business/entity-management-page';
 import { visitPageConfig } from '@/components/business/forms/visit-form';
 
