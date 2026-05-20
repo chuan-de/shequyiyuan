@@ -35,8 +35,12 @@ export async function healthCheck(): Promise<HealthResponse> { return unwrapResp
 export async function currentUser(token: string): Promise<CurrentUserResponse> { return unwrapResponse(await apiFetch(API_ROUTES.authCurrentUser,{headers:authHeader(token),cache:'no-store'})); }
 export async function listDictionaries(token: string): Promise<DictionaryResponse[]> { return unwrapResponse(await apiFetch(API_ROUTES.dictionaries,{headers:authHeader(token),cache:'no-store'})); }
 export async function queryDictionaryItems(token: string, query: ListQuery & { dictCode: string }): Promise<PageResponse<DictionaryItemResponse>> {
-  const p = new URLSearchParams(); Object.entries(query).forEach(([k,v])=>v!==undefined&&p.set(k,String(v)));
-  return unwrapResponse(await apiFetch(`${API_ROUTES.dictionaries}?${p.toString()}`, { headers: authHeader(token), cache:'no-store' }));
+  const p = new URLSearchParams();
+  ['page','size','itemName','sortBy','sortDir'].forEach((k)=>{
+    const v = query[k as keyof typeof query];
+    if (v !== undefined) p.set(k, String(v));
+  });
+  return unwrapResponse(await apiFetch(`${API_ROUTES.dictionaryItems(query.dictCode)}?${p.toString()}`, { headers: authHeader(token), cache:'no-store' }));
 }
 export async function listEntities(token: string, route: string, query: ListQuery = {}): Promise<PageResponse<EntityRecord>> {
   const p = new URLSearchParams(); Object.entries(query).forEach(([k,v])=>v!==undefined&&p.set(k,String(v)));
