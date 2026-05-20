@@ -10,7 +10,7 @@ import com.hospital.common.PageResponse;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
-import java.util.stream.Collectors;
+import com.hospital.common.PageQueryUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,9 +24,10 @@ public class MedicationController {
     @GetMapping
     @PreAuthorize("hasAuthority('medication:read')")
     public ApiResponse<PageResponse<Medication>> list(@RequestParam(required = false) String keyword, @RequestParam(required = false) MedicationStatus status,
-                                                    @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size) {
+                                                    @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size,
+                                                     @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "asc") String sortDir) {
         List<Medication> all = medicationService.list(keyword, status);
-        return ApiResponse.ok(toPage(all, page, size));
+        return ApiResponse.ok(PageQueryUtils.toPage(all, page, size, sortBy, sortDir));
     }
 
     @GetMapping("/{id}")

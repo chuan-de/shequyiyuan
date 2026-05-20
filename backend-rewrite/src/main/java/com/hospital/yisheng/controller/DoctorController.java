@@ -10,7 +10,7 @@ import com.hospital.common.PageResponse;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
-import java.util.stream.Collectors;
+import com.hospital.common.PageQueryUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,8 +23,9 @@ public class DoctorController {
     @GetMapping
     @PreAuthorize("hasAuthority('doctors:read')")
     public ApiResponse<PageResponse<DoctorProfile>> list(@RequestParam(required = false) String keyword, @RequestParam(required = false) DoctorStatus status,
-                                                     @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(toPage(service.list(keyword, status), page, size));
+                                                     @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size,
+                                                     @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "asc") String sortDir) {
+        return ApiResponse.ok(PageQueryUtils.toPage(service.list(keyword, status), page, size, sortBy, sortDir));
     }
 
     @GetMapping("/{id}")
@@ -43,14 +44,6 @@ public class DoctorController {
     @PreAuthorize("hasAuthority('doctors:status')")
     public ApiResponse<DoctorProfile> status(@PathVariable Long id, @RequestBody @Valid DoctorStatusChangeRequest req, Principal p) {
         return ApiResponse.ok(service.changeStatus(id, req.targetStatus(), p == null ? "system" : p.getName()));
-    }
-
-    private <T> PageResponse<T> toPage(List<T> all, int page, int size) {
-        int safeSize = Math.max(size, 1);
-        int safePage = Math.max(page, 1);
-        int from = Math.min((safePage - 1) * safeSize, all.size());
-        int to = Math.min(from + safeSize, all.size());
-        return new PageResponse<>(all.subList(from, to).stream().collect(Collectors.toList()), all.size(), safePage, safeSize);
     }
 }
 
