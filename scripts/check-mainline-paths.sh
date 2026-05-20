@@ -16,9 +16,9 @@ while IFS= read -r file; do
   [[ -z "$file" ]] && continue
 
   case "$file" in
-    backend-rewrite/*|server/legacy/*)
+    backend-rewrite_deprecated_20260520/*|server/legacy/*)
       case "$file" in
-        backend-rewrite/README.md|backend-rewrite/ARCHIVE_ONLY.md|server/legacy/README.md)
+        backend-rewrite_deprecated_20260520/README.md|backend-rewrite_deprecated_20260520/ARCHIVE_ONLY.md|backend-rewrite_deprecated_20260520/DEPRECATION_NOTICE.md|server/legacy/README.md)
           ;;
         *)
           blocked+=("$file")
@@ -41,4 +41,4 @@ if (( ${#blocked[@]} > 0 )); then
 fi
 
 echo "✅ Path guard passed: no non-mainline business changes detected."
-echo "ℹ️ Reminder: runtime backend entry must be server/backend-rewrite/ (root backend-rewrite/ is archive-only)."
+echo "ℹ️ Reminder: runtime backend entry must be server/backend-rewrite/ (root backend-rewrite_deprecated_20260520/ is archive-only)."
