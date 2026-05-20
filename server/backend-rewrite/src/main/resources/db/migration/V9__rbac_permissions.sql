@@ -1,3 +1,7 @@
+-- Preconditions:
+-- 1) requires app_role already exists
+-- 2) this script creates app_permission/app_role_permission/app_legacy_permission_mapping,
+--    then seeds initial RBAC and legacy mapping baseline data
 CREATE TABLE IF NOT EXISTS app_permission (
     id BIGSERIAL PRIMARY KEY,
     permission_code VARCHAR(100) NOT NULL UNIQUE,
@@ -41,6 +45,9 @@ VALUES
     ('auth:me:read', 'auth', 'read', '查看当前用户信息')
 ON CONFLICT (permission_code) DO NOTHING;
 
+-- Preconditions for data seed:
+-- requires app_permission/app_role_permission already exists in this script,
+-- and app_role contains USER role code.
 INSERT INTO app_role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM app_role r
@@ -48,6 +55,9 @@ JOIN app_permission p ON p.permission_code IN ('dictionary:read', 'medications:r
 WHERE r.role_code = 'USER'
 ON CONFLICT DO NOTHING;
 
+-- Preconditions for data seed:
+-- requires app_permission/app_role_permission already exists in this script,
+-- and app_role contains ADMIN role code.
 INSERT INTO app_role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM app_role r

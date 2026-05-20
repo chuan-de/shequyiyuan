@@ -6,6 +6,32 @@
 ## 维护要求
 - 每次合并“迁移相关 PR”时，必须同步更新本文件中的模块状态、证据链接、最后更新时间、负责人。
 - 模块状态仅允许以下枚举：`Not Started` / `Partial` / `Done` / `Diverged`。
+- 权限/RBAC 相关迁移必须遵循“结构先行、数据后置”的分层规则：结构创建脚本发布后，只能通过新增版本脚本做数据补丁或命名调整，禁止回改已发布版本脚本。
+
+## 数据库迁移分层规则（权限/RBAC）
+
+### L1：基础实体结构
+- 定义：用户、角色等基础实体与核心主键/唯一键（例如 `app_role`）。
+- 要求：仅做结构创建或约束补充，不混入业务数据清洗逻辑。
+
+### L2：RBAC 结构
+- 定义：权限主体结构与关联关系（例如 `app_permission`、`app_role_permission`、`app_legacy_permission_mapping`）。
+- 要求：先完成表结构，再执行任何依赖该结构的数据脚本。
+
+### L3：RBAC 数据调整
+- 定义：命名对齐、历史映射补丁、冗余数据清理等（例如权限 code 对齐、legacy 映射补种）。
+- 要求：
+  - 必须在 L2 结构已存在后执行。
+  - 必须使用新版本增量脚本发布（如 `Vxx__*.sql`），禁止修改已发布历史版本脚本内容。
+
+## 权限/RBAC 迁移依赖清单
+
+| 脚本 | 分层 | 依赖关系（执行前置） | 说明 |
+|---|---|---|---|
+| `V8__permissions.sql` | L2（含初始数据种子） | 依赖 `app_role` 已存在 | 创建 `app_permission`、`app_role_permission` 并写入初始权限/角色权限。 |
+| `V9__rbac_permissions.sql` | L2（含初始数据种子） | 依赖 `app_role` 已存在 | 创建增强版 RBAC 结构（含 `resource_code`/`action_code` 及 legacy 映射表）并写入初始数据。 |
+| `V11__align_module_permission_naming.sql` | L3 | 依赖 `app_permission`、`app_role_permission` 已存在（来自 V8/V9） | 对旧权限命名做对齐迁移，并清理旧命名数据。 |
+| `V12__seed_legacy_permission_mapping.sql` | L3 | 依赖 `app_legacy_permission_mapping`、`app_permission`、`app_role` 已存在（来自 V9） | 补种 legacy 权限映射数据。 |
 
 ## 状态字段说明
 - **状态**：
