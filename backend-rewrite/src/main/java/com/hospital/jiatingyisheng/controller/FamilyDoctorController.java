@@ -15,14 +15,14 @@ public class FamilyDoctorController {
     private final FamilyDoctorService service;
     public FamilyDoctorController(FamilyDoctorService service) { this.service = service; }
 
-    @GetMapping @PreAuthorize("hasAuthority('familyDoctor:read')")
+    @GetMapping @PreAuthorize("hasAuthority('family-doctors:read')")
     public List<FamilyDoctorContract> list(@RequestParam(required = false) String keyword, @RequestParam(required = false) FamilyDoctorStatus status) { return service.list(keyword, status); }
-    @GetMapping("/{id}") @PreAuthorize("hasAuthority('familyDoctor:read')")
+    @GetMapping("/{id}") @PreAuthorize("hasAuthority('family-doctors:read')")
     public FamilyDoctorContract detail(@PathVariable Long id) { return service.detail(id); }
-    @PostMapping @PreAuthorize("hasAuthority('familyDoctor:write')")
+    @PostMapping @PreAuthorize("hasAuthority('family-doctors:write')")
     public FamilyDoctorContract create(@RequestBody @Valid FamilyDoctorUpsertRequest req, Principal p) { return service.create(req, p == null ? "system" : p.getName()); }
-    @PutMapping("/{id}") @PreAuthorize("hasAuthority('familyDoctor:write')")
+    @PutMapping("/{id}") @PreAuthorize("hasAuthority('family-doctors:write')")
     public FamilyDoctorContract update(@PathVariable Long id, @RequestBody @Valid FamilyDoctorUpsertRequest req, Principal p) { return service.update(id, req, p == null ? "system" : p.getName()); }
-    @PatchMapping("/{id}/status") @PreAuthorize("hasAuthority('familyDoctor:status')")
+    @PatchMapping("/{id}/status") @PreAuthorize("hasAuthority('family-doctors:status')")
     public FamilyDoctorContract changeStatus(@PathVariable Long id, @RequestBody @Valid FamilyDoctorStatusChangeRequest req, Principal p) { return service.changeStatus(id, req.targetStatus(), req.reason(), p == null ? "system" : p.getName()); }
 }

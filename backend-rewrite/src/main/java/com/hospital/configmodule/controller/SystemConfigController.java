@@ -14,14 +14,14 @@ import org.springframework.web.bind.annotation.*;
 public class SystemConfigController {
     private final SystemConfigService service;
     public SystemConfigController(SystemConfigService service) { this.service = service; }
-    @GetMapping @PreAuthorize("hasAuthority('config:read')")
+    @GetMapping @PreAuthorize("hasAuthority('configs:read')")
     public List<SystemConfig> list(@RequestParam(required = false) String key, @RequestParam(required = false) ConfigStatus status) { return service.list(key, status); }
-    @GetMapping("/{id}") @PreAuthorize("hasAuthority('config:read')")
+    @GetMapping("/{id}") @PreAuthorize("hasAuthority('configs:read')")
     public SystemConfig detail(@PathVariable Long id) { return service.detail(id); }
-    @PostMapping @PreAuthorize("hasAuthority('config:write')")
+    @PostMapping @PreAuthorize("hasAuthority('configs:write')")
     public SystemConfig create(@RequestBody @Valid SystemConfigUpsertRequest req, Principal p) { return service.create(req, p == null ? "system" : p.getName()); }
-    @PutMapping("/{id}") @PreAuthorize("hasAuthority('config:write')")
+    @PutMapping("/{id}") @PreAuthorize("hasAuthority('configs:write')")
     public SystemConfig update(@PathVariable Long id, @RequestBody @Valid SystemConfigUpsertRequest req, Principal p) { return service.update(id, req, p == null ? "system" : p.getName()); }
-    @PatchMapping("/{id}/status") @PreAuthorize("hasAuthority('config:status')")
+    @PatchMapping("/{id}/status") @PreAuthorize("hasAuthority('configs:status')")
     public SystemConfig status(@PathVariable Long id, @RequestBody @Valid SystemConfigStatusChangeRequest req, Principal p) { return service.changeStatus(id, req.targetStatus(), p == null ? "system" : p.getName()); }
 }
