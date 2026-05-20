@@ -1,8 +1,7 @@
 -- Preconditions:
--- 1) requires app_legacy_permission_mapping already exists (from structure migration, e.g. V9)
--- 2) requires referenced app_permission.permission_code already exists
--- 3) requires referenced app_role.role_code already exists
--- 4) this is a data-adjustment migration and must run after RBAC structure creation
+-- 1) requires V9 已执行（app_legacy_permission_mapping 已存在）
+-- 2) requires referenced app_permission.permission_code and app_role.role_code already exist
+-- 3) this is data-only migration and must run after RBAC baseline migrations
 INSERT INTO app_legacy_permission_mapping (legacy_module, menu_name, api_pattern, permission_code, role_code)
 VALUES
     ('dictionary', '字典管理', '/dictionary/**', 'dictionary:read', 'USER'),

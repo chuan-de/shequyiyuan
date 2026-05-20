@@ -1,21 +1,7 @@
 -- Preconditions:
--- 1) requires app_role already exists
--- 2) this script creates app_permission/app_role_permission/app_legacy_permission_mapping,
---    then seeds initial RBAC and legacy mapping baseline data
-CREATE TABLE IF NOT EXISTS app_permission (
-    id BIGSERIAL PRIMARY KEY,
-    permission_code VARCHAR(100) NOT NULL UNIQUE,
-    resource_code VARCHAR(50) NOT NULL,
-    action_code VARCHAR(50) NOT NULL,
-    permission_name VARCHAR(200) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS app_role_permission (
-    role_id BIGINT NOT NULL REFERENCES app_role(id) ON DELETE CASCADE,
-    permission_id BIGINT NOT NULL REFERENCES app_permission(id) ON DELETE CASCADE,
-    PRIMARY KEY (role_id, permission_id)
-);
-
+-- 1) requires V8 already执行完成（app_permission/app_role_permission 结构已存在）
+-- 2) requires app_role already exists
+-- 3) this script仅负责数据初始化与 app_legacy_permission_mapping 建表，不做 app_permission 结构变更
 CREATE TABLE IF NOT EXISTS app_legacy_permission_mapping (
     id BIGSERIAL PRIMARY KEY,
     legacy_module VARCHAR(100) NOT NULL,
@@ -25,24 +11,24 @@ CREATE TABLE IF NOT EXISTS app_legacy_permission_mapping (
     role_code VARCHAR(50) NOT NULL REFERENCES app_role(role_code)
 );
 
-INSERT INTO app_permission (permission_code, resource_code, action_code, permission_name)
+INSERT INTO app_permission (permission_code, permission_name)
 VALUES
-    ('dictionary:read', 'dictionary', 'read', '查看字典'),
-    ('dictionary:write', 'dictionary', 'write', '编辑字典'),
-    ('dictionary:delete', 'dictionary', 'delete', '删除字典'),
-    ('medications:read', 'medications', 'read', '查看药品'),
-    ('medications:write', 'medications', 'write', '编辑药品'),
-    ('medications:status', 'medications', 'status', '变更药品状态'),
-    ('family-doctors:read', 'family-doctors', 'read', '查看家庭医生签约'),
-    ('family-doctors:write', 'family-doctors', 'write', '编辑家庭医生签约'),
-    ('family-doctors:status', 'family-doctors', 'status', '变更家庭医生签约状态'),
-    ('visits:read', 'visits', 'read', '查看就诊记录'),
-    ('visits:write', 'visits', 'write', '编辑就诊记录'),
-    ('visits:status', 'visits', 'status', '变更就诊记录状态'),
-    ('configs:read', 'configs', 'read', '查看系统配置'),
-    ('configs:write', 'configs', 'write', '编辑系统配置'),
-    ('configs:status', 'configs', 'status', '变更系统配置状态'),
-    ('auth:me:read', 'auth', 'read', '查看当前用户信息')
+    ('dictionary:read', '查看字典'),
+    ('dictionary:write', '编辑字典'),
+    ('dictionary:delete', '删除字典'),
+    ('medications:read', '查看药品'),
+    ('medications:write', '编辑药品'),
+    ('medications:status', '变更药品状态'),
+    ('family-doctors:read', '查看家庭医生签约'),
+    ('family-doctors:write', '编辑家庭医生签约'),
+    ('family-doctors:status', '变更家庭医生签约状态'),
+    ('visits:read', '查看就诊记录'),
+    ('visits:write', '编辑就诊记录'),
+    ('visits:status', '变更就诊记录状态'),
+    ('configs:read', '查看系统配置'),
+    ('configs:write', '编辑系统配置'),
+    ('configs:status', '变更系统配置状态'),
+    ('auth:me:read', '查看当前用户信息')
 ON CONFLICT (permission_code) DO NOTHING;
 
 -- Preconditions for data seed:
