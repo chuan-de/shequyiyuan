@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/dictionaries")
-public class DictionaryController {
+public class CommonDictionaryController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> list(@RequestParam(required = false) String type) {
