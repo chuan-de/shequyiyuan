@@ -32,4 +32,4 @@
 | 就诊（visits） | jiuzhen | Partial | 代码：`backend-rewrite/src/main/java/com/hospital/jiuzhen/controller/VisitController.java`；契约：`docs/openapi-migrated-modules.yaml`（`/api/v1/visits`）；页面：`web/app/visits/page.tsx`；测试：待补充（缺少集成测试证据） | 2026-05-20 | 待指定 |
 | 病例（medicalRecords） | bingli | Partial | 代码：待补充（rewrite 控制器未落地）；契约：`docs/openapi-migrated-modules.yaml`（`/api/v1/medical-records`）；页面：`web/app/medical-records/page.tsx`；测试：待补充 | 2026-05-20 | 待指定 |
 | 健康档案（healthRecords） | jiuankangdangan | Partial | 代码：待补充（rewrite 控制器未落地）；契约：`docs/openapi-migrated-modules.yaml`（`/api/v1/health-records`）；页面：`web/app/health-records/page.tsx`；测试：待补充 | 2026-05-20 | 待指定 |
-| 医生（doctors） | yisheng | Partial | 代码：待补充（rewrite 控制器未落地）；契约：`docs/openapi-migrated-modules.yaml`（`/api/v1/doctors`）；页面：`web/app/doctors/page.tsx`；测试：待补充 | 2026-05-20 | 待指定 |
+| 医生（doctors） | yisheng | Partial | 代码：`backend-rewrite/src/main/java/com/hospital/yisheng/controller/DoctorController.java`；契约：`docs/openapi-migrated-modules.yaml`（`/api/v1/doctors`）；页面：`web/app/doctors/page.tsx`；测试：待补充（缺少集成测试证据） | 2026-05-20 | 待指定 |
