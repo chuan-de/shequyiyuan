@@ -32,16 +32,25 @@ public class AuthUserDetailsService implements UserDetailsService {
             .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
         List<GrantedAuthority> authorities = jdbcClient.sql("""
-                SELECT r.role_code
-                FROM app_user_role ur
-                JOIN app_role r ON ur.role_id = r.id
-                WHERE ur.user_id = :userId
+                SELECT authority_code
+                FROM (
+                    SELECT CONCAT('ROLE_', r.role_code) AS authority_code
+                    FROM app_user_role ur
+                    JOIN app_role r ON ur.role_id = r.id
+                    WHERE ur.user_id = :userId
+                    UNION
+                    SELECT p.permission_code AS authority_code
+                    FROM app_user_role ur
+                    JOIN app_role_permission rp ON ur.role_id = rp.role_id
+                    JOIN app_permission p ON rp.permission_id = p.id
+                    WHERE ur.user_id = :userId
+                ) t
             """)
             .param("userId", userRow.id())
             .query(String.class)
             .list()
             .stream()
-            .map(code -> new SimpleGrantedAuthority("ROLE_" + code))
+            .map(SimpleGrantedAuthority::new)
             .map(GrantedAuthority.class::cast)
             .toList();
 
