@@ -14,13 +14,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/jiuankangdangan")
+@RequestMapping({"/api/v1/health-records", "/api/v1/jiuankangdangan"})
 public class JiuankangdanganController {
     private final JiuankangdanganService service;
     public JiuankangdanganController(JiuankangdanganService service) { this.service = service; }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('jiuankangdangan:read')")
+    @PreAuthorize("hasAnyAuthority('health-records:read', 'jiuankangdangan:read')")
     public ApiResponse<PageResponse<JiuankangdanganRecord>> list(@RequestParam(required = false) String keyword, @RequestParam(required = false) JiuankangdanganStatus status,
                                                                   @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size,
                                                                   @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "asc") String sortDir) {

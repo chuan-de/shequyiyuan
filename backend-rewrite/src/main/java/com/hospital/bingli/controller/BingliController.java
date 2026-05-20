@@ -14,13 +14,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/bingli")
+@RequestMapping({"/api/v1/medical-records", "/api/v1/bingli"})
 public class BingliController {
     private final BingliService service;
     public BingliController(BingliService service) { this.service = service; }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('bingli:read')")
+    @PreAuthorize("hasAnyAuthority('medical-records:read', 'bingli:read')")
     public ApiResponse<PageResponse<BingliRecord>> list(@RequestParam(required = false) String keyword, @RequestParam(required = false) BingliStatus status,
                                                          @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size,
                                                          @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "asc") String sortDir) {
