@@ -28,24 +28,24 @@ public class JiuankangdanganController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('health-records:read', 'jiuankangdangan:read')")
-    public JiuankangdanganRecord detail(@PathVariable Long id) { return service.detail(id); }
+    @PreAuthorize("hasAuthority('jiuankangdangan:read')")
+    public ApiResponse<JiuankangdanganRecord> detail(@PathVariable Long id) { return ApiResponse.ok(service.detail(id)); }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('health-records:write', 'jiuankangdangan:write')")
-    public JiuankangdanganRecord create(@RequestBody @Valid JiuankangdanganUpsertRequest request, Principal principal) {
-        return service.create(request, principal == null ? "system" : principal.getName());
+    @PreAuthorize("hasAuthority('jiuankangdangan:write')")
+    public ApiResponse<JiuankangdanganRecord> create(@RequestBody @Valid JiuankangdanganUpsertRequest request, Principal principal) {
+        return ApiResponse.ok(service.create(request, principal == null ? "system" : principal.getName()));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('health-records:write', 'jiuankangdangan:write')")
-    public JiuankangdanganRecord update(@PathVariable Long id, @RequestBody @Valid JiuankangdanganUpsertRequest request, Principal principal) {
-        return service.update(id, request, principal == null ? "system" : principal.getName());
+    @PreAuthorize("hasAuthority('jiuankangdangan:write')")
+    public ApiResponse<JiuankangdanganRecord> update(@PathVariable Long id, @RequestBody @Valid JiuankangdanganUpsertRequest request, Principal principal) {
+        return ApiResponse.ok(service.update(id, request, principal == null ? "system" : principal.getName()));
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyAuthority('health-records:status', 'jiuankangdangan:status')")
-    public JiuankangdanganRecord status(@PathVariable Long id, @RequestBody @Valid JiuankangdanganStatusChangeRequest request, Principal principal) {
-        return service.changeStatus(id, request.targetStatus(), principal == null ? "system" : principal.getName());
+    @PreAuthorize("hasAuthority('jiuankangdangan:status')")
+    public ApiResponse<JiuankangdanganRecord> status(@PathVariable Long id, @RequestBody @Valid JiuankangdanganStatusChangeRequest request, Principal principal) {
+        return ApiResponse.ok(service.changeStatus(id, request.targetStatus(), principal == null ? "system" : principal.getName()));
     }
 }
