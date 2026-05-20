@@ -34,6 +34,7 @@ public class AuthService {
     private final AppUserRepository appUserRepository;
     private final AppRoleRepository appRoleRepository;
     private final AppUserRoleRepository appUserRoleRepository;
+    private final AppRolePermissionRepository appRolePermissionRepository;
     private final AuditService auditService;
 
     public AuthService(
@@ -45,6 +46,7 @@ public class AuthService {
         AppUserRepository appUserRepository,
         AppRoleRepository appRoleRepository,
         AppUserRoleRepository appUserRoleRepository,
+        AppRolePermissionRepository appRolePermissionRepository,
         AuditService auditService
     ) {
         this.authenticationManager = authenticationManager;
@@ -55,6 +57,7 @@ public class AuthService {
         this.appUserRepository = appUserRepository;
         this.appRoleRepository = appRoleRepository;
         this.appUserRoleRepository = appUserRoleRepository;
+        this.appRolePermissionRepository = appRolePermissionRepository;
         this.auditService = auditService;
     }
 

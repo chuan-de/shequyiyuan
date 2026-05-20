@@ -50,7 +50,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(SecurityException.class)
     public ResponseEntity<ApiErrorResponse> handleForbidden(SecurityException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-            .body(ApiErrorResponse.of(ErrorCode.FORBIDDEN, ex.getMessage(), List.of()));
+            .body(ApiErrorResponse.of(ErrorCode.FORBIDDEN, ex.getMessage(), List.of(), TraceContext.getTraceId()));
     }
 
     @ExceptionHandler(Exception.class)
