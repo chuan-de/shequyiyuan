@@ -98,6 +98,25 @@ class AuthControllerIntegrationTests {
             .andExpect(jsonPath("$.username").value("charlie"));
     }
 
+
+    @Test
+    void newlyRegisteredUserWithDefaultUserRole_shouldLoginSuccessfully() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"username":"fresh_user","password":"password123"}
+                    """))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"username":"fresh_user","password":"password123"}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").isString());
+    }
+
     @Test
     void me_withoutToken_shouldReturnUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/auth/me"))
