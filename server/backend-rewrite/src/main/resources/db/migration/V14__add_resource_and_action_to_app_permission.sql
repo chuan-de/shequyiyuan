@@ -1,21 +1,35 @@
--- Preconditions:
--- 1) requires V8/V9 已执行（app_permission 已存在且 permission_code 已初始化）
--- 2) this migration is the only place to evolve app_permission structure after table creation
--- 3) supports legacy V8 库（无 resource_code/action_code）与新环境线性迁移
+-- Consolidated migration for app_permission.resource_code/action_code
+-- Covers both schema evolution and historical data backfill in one Flyway version.
 ALTER TABLE app_permission
     ADD COLUMN IF NOT EXISTS resource_code VARCHAR(50);
 
 ALTER TABLE app_permission
     ADD COLUMN IF NOT EXISTS action_code VARCHAR(50);
 
+-- Backfill historical rows from permission_code.
 UPDATE app_permission
-SET
-    resource_code = split_part(permission_code, ':', 1),
-    action_code = CASE
-        WHEN position(':' IN permission_code) = 0 THEN 'read'
-        ELSE split_part(permission_code, ':', array_length(string_to_array(permission_code, ':'), 1))
-    END
-WHERE resource_code IS NULL OR action_code IS NULL;
+SET resource_code = LEFT(COALESCE(NULLIF(split_part(permission_code, ':', 1), ''), 'unknown'), 50)
+WHERE resource_code IS NULL;
+
+UPDATE app_permission
+SET action_code = LEFT(
+        COALESCE(
+            NULLIF(split_part(permission_code, ':', array_length(string_to_array(permission_code, ':'), 1)), ''),
+            'unknown'
+        ),
+        50
+    )
+WHERE action_code IS NULL;
+
+-- Defensive defaults + null cleanup for malformed legacy data.
+ALTER TABLE app_permission
+    ALTER COLUMN resource_code SET DEFAULT 'unknown';
+
+ALTER TABLE app_permission
+    ALTER COLUMN action_code SET DEFAULT 'unknown';
+
+UPDATE app_permission SET resource_code = 'unknown' WHERE resource_code IS NULL;
+UPDATE app_permission SET action_code = 'unknown' WHERE action_code IS NULL;
 
 ALTER TABLE app_permission
     ALTER COLUMN resource_code SET NOT NULL;
