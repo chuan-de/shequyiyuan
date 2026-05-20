@@ -22,6 +22,37 @@ export type DictionaryResponse = { code: string; name: string };
 export type DictionaryItemResponse = { id: number; name: string; value: string; sortOrder: number; enabled: boolean };
 export type HealthResponse = { status: string; service: string; timestamp: string };
 export type EntityRecord = { id: number; name?: string; enabled?: boolean; status?: string; [key: string]: unknown };
+export type StatusManagedRoute =
+  | typeof API_ROUTES.doctors
+  | typeof API_ROUTES.familyDoctors
+  | typeof API_ROUTES.visits
+  | typeof API_ROUTES.medications
+  | typeof API_ROUTES.configs
+  | typeof API_ROUTES.medicalRecords
+  | typeof API_ROUTES.healthRecords;
+
+export type DoctorStatus = 'ACTIVE' | 'INACTIVE';
+export type FamilyDoctorStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'TERMINATED';
+export type VisitStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
+export type MedicationStatus = 'ENABLED' | 'DISABLED';
+export type ConfigStatus = 'ENABLED' | 'DISABLED';
+export type MedicalRecordStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+export type HealthRecordStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+
+export type EntityStatusByRoute = {
+  [API_ROUTES.doctors]: DoctorStatus;
+  [API_ROUTES.familyDoctors]: FamilyDoctorStatus;
+  [API_ROUTES.visits]: VisitStatus;
+  [API_ROUTES.medications]: MedicationStatus;
+  [API_ROUTES.configs]: ConfigStatus;
+  [API_ROUTES.medicalRecords]: MedicalRecordStatus;
+  [API_ROUTES.healthRecords]: HealthRecordStatus;
+};
+
+export type StatusChangeRequest<R extends StatusManagedRoute = StatusManagedRoute> = {
+  targetStatus: EntityStatusByRoute[R];
+  reason?: string;
+};
 
 export type ApiResponse<T> = { success: boolean; message?: string; data: T };
 export type ApiErrorResponse = { message?: string; errorCode?: string; details?: string[]; traceId?: string };

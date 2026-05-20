@@ -1,6 +1,6 @@
 import { EntityManagementPage } from '@/components/business/entity-management-page';
-import { API_ROUTES } from '@/lib/api-contract';
+import { doctorPageConfig } from '@/components/business/forms/doctor-form';
 
 export default function Page() {
-  return <EntityManagementPage title='doctors' route={API_ROUTES.doctors} permissionPrefix='doctors' />;
+  return <EntityManagementPage config={doctorPageConfig} />;
 }
