@@ -21,7 +21,7 @@ public class VisitController {
     public VisitController(VisitService service) { this.service = service; }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('visit:read')")
+    @PreAuthorize("hasAuthority('visits:read')")
     public ApiResponse<PageResponse<VisitRecord>> list(@RequestParam(required = false) String keyword, @RequestParam(required = false) VisitStatus status,
                                                    @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size,
                                                      @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "asc") String sortDir) {
@@ -29,19 +29,19 @@ public class VisitController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('visit:read')")
+    @PreAuthorize("hasAuthority('visits:read')")
     public ApiResponse<VisitRecord> detail(@PathVariable Long id) { return ApiResponse.ok(service.detail(id)); }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('visit:write')")
+    @PreAuthorize("hasAuthority('visits:write')")
     public ApiResponse<VisitRecord> create(@RequestBody @Valid VisitUpsertRequest req, Principal p) { return ApiResponse.ok(service.create(req, p == null ? "system" : p.getName())); }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('visit:write')")
+    @PreAuthorize("hasAuthority('visits:write')")
     public ApiResponse<VisitRecord> update(@PathVariable Long id, @RequestBody @Valid VisitUpsertRequest req, Principal p) { return ApiResponse.ok(service.update(id, req, p == null ? "system" : p.getName())); }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAuthority('visit:status')")
+    @PreAuthorize("hasAuthority('visits:status')")
     public ApiResponse<VisitRecord> status(@PathVariable Long id, @RequestBody @Valid VisitStatusChangeRequest req, Principal p) {
         return ApiResponse.ok(service.changeStatus(id, req.targetStatus(), p == null ? "system" : p.getName()));
     }
