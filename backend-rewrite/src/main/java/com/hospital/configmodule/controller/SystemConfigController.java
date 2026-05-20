@@ -21,7 +21,7 @@ public class SystemConfigController {
     public ApiResponse<PageResponse<SystemConfig>> list(@RequestParam(required = false) String key, @RequestParam(required = false) ConfigStatus status,
                                                 @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size,
                                                      @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "asc") String sortDir) { return ApiResponse.ok(PageQueryUtils.toPage(service.list(key, status), page, size, sortBy, sortDir)); }
-    @GetMapping("/{id}") @PreAuthorize("hasAuthority('config:read')")
+    @GetMapping("/{id}") @PreAuthorize("hasAuthority('configs:read')")
     public ApiResponse<SystemConfig> detail(@PathVariable Long id) { return ApiResponse.ok(service.detail(id)); }
     @PostMapping @PreAuthorize("hasAuthority('configs:write')")
     public ApiResponse<SystemConfig> create(@RequestBody @Valid SystemConfigUpsertRequest req, Principal p) { return ApiResponse.ok(service.create(req, p == null ? "system" : p.getName())); }

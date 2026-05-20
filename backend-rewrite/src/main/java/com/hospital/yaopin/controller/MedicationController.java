@@ -22,7 +22,7 @@ public class MedicationController {
     public MedicationController(MedicationService medicationService) { this.medicationService = medicationService; }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('medication:read')")
+    @PreAuthorize("hasAuthority('medications:read')")
     public ApiResponse<PageResponse<Medication>> list(@RequestParam(required = false) String keyword, @RequestParam(required = false) MedicationStatus status,
                                                     @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size,
                                                      @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "asc") String sortDir) {
@@ -31,23 +31,23 @@ public class MedicationController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('medication:read')")
+    @PreAuthorize("hasAuthority('medications:read')")
     public ApiResponse<Medication> detail(@PathVariable Long id) { return ApiResponse.ok(medicationService.detail(id)); }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('medication:write')")
+    @PreAuthorize("hasAuthority('medications:write')")
     public ApiResponse<Medication> create(@RequestBody @Valid MedicationUpsertRequest request, Principal principal) {
         return ApiResponse.ok(medicationService.create(request, principal == null ? "system" : principal.getName()));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('medication:write')")
+    @PreAuthorize("hasAuthority('medications:write')")
     public ApiResponse<Medication> update(@PathVariable Long id, @RequestBody @Valid MedicationUpsertRequest request, Principal principal) {
         return ApiResponse.ok(medicationService.update(id, request, principal == null ? "system" : principal.getName()));
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAuthority('medication:status')")
+    @PreAuthorize("hasAuthority('medications:status')")
     public ApiResponse<Medication> changeStatus(@PathVariable Long id, @RequestBody @Valid MedicationStatusChangeRequest request, Principal principal) {
         return ApiResponse.ok(medicationService.changeStatus(id, request.targetStatus(), principal == null ? "system" : principal.getName()));
     }
