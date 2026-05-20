@@ -33,3 +33,9 @@
 | 病例（medicalRecords） | bingli | Partial | 代码：待补充（rewrite 控制器未落地）；契约：`docs/openapi-migrated-modules.yaml`（`/api/v1/medical-records`）；页面：`web/app/medical-records/page.tsx`；测试：待补充 | 2026-05-20 | 待指定 |
 | 健康档案（healthRecords） | jiuankangdangan | Partial | 代码：待补充（rewrite 控制器未落地）；契约：`docs/openapi-migrated-modules.yaml`（`/api/v1/health-records`）；页面：`web/app/health-records/page.tsx`；测试：待补充 | 2026-05-20 | 待指定 |
 | 医生（doctors） | yisheng | Partial | 代码：`server/backend-rewrite/src/main/java/com/hospital/yisheng/controller/DoctorController.java`；契约：`docs/openapi-migrated-modules.yaml`（`/api/v1/doctors`）；页面：`web/app/doctors/page.tsx`；测试：待补充（缺少集成测试证据） | 2026-05-20 | 待指定 |
+
+## 迁移顺序调整记录
+
+- **配置权限命名迁移顺序调整（2026-05-20）**：将 `V4__align_configs_permission_naming.sql` 中依赖 `app_permission` / `app_role_permission` 的 SQL 迁移到 `V13__align_configs_permission_naming.sql`，并将 V4 改为安全空操作注释。
+- **调整原因**：空库初始化时，V4 执行阶段早于 `V8__permissions.sql`（权限表创建），会出现依赖未满足导致迁移失败。
+
