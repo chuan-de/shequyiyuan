@@ -29,9 +29,9 @@ const statusChangeByRoute: { [R in StatusManagedRoute]: (enabled: boolean) => St
   [API_ROUTES.healthRecords]: (enabled) => ({ targetStatus: enabled ? 'ACTIVE' : 'ARCHIVED' })
 };
 
-export async function login(payload: LoginPayload): Promise<AuthResponse> { return unwrapResponse(await apiFetch(API_ROUTES.authLogin,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})); }
-export async function register(payload: RegisterPayload): Promise<void> { await unwrapResponse<Record<string,unknown>>(await apiFetch(API_ROUTES.authRegister,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})); }
-export async function healthCheck(): Promise<HealthResponse> { return unwrapResponse(await apiFetch(API_ROUTES.health,{cache:'no-store'})); }
+export async function login(payload: LoginPayload): Promise<AuthResponse> { const r = await apiFetch(API_ROUTES.authLogin,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); if (!r.ok) throw await parseError(r); return r.json() as Promise<AuthResponse>; }
+export async function register(payload: RegisterPayload): Promise<void> { const r = await apiFetch(API_ROUTES.authRegister,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); if (!r.ok) throw await parseError(r); }
+export async function healthCheck(): Promise<HealthResponse> { const r = await apiFetch(API_ROUTES.health,{cache:'no-store'}); if (!r.ok) throw new Error('Health check failed'); return r.json() as Promise<HealthResponse>; }
 export async function currentUser(token: string): Promise<CurrentUserResponse> { return unwrapResponse(await apiFetch(API_ROUTES.authCurrentUser,{headers:authHeader(token),cache:'no-store'})); }
 export async function listDictionaries(token: string): Promise<DictionaryResponse[]> {
   const data = await unwrapResponse<DictionaryResponse[] | PageResponse<DictionaryResponse>>(await apiFetch(API_ROUTES.dictionaries,{headers:authHeader(token),cache:'no-store'}));

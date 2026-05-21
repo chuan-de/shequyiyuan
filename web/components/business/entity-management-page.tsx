@@ -1,15 +1,21 @@
 'use client';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { changeEntityStatus, createEntity, currentUser, EntityRecord, getEntity, listEntities, updateEntity } from '@/lib/api';
+import {
+  changeEntityStatus, createEntity, currentUser, EntityRecord,
+  getEntity, listEntities, updateEntity,
+} from '@/lib/api';
 import { hasPermission } from '@/lib/permissions';
 import { useRouter } from 'next/navigation';
 
-export type EntityFormField = { key: string; label: string; required?: boolean; placeholder?: string; defaultValue?: string };
-export type EntityColumn = { key: string; title: string; render?: (row: EntityRecord) => string };
+export type EntityFormField = {
+  key: string; label: string; required?: boolean; placeholder?: string; defaultValue?: string;
+};
+export type EntityColumn = {
+  key: string; title: string; render?: (row: EntityRecord) => string;
+};
 export type EntityPageConfig = {
   title: string;
   route: string;
@@ -21,47 +27,341 @@ export type EntityPageConfig = {
   updatePayload: (form: Record<string, string>, row: EntityRecord) => Record<string, unknown>;
 };
 
-function initForm(fields: EntityFormField[], row?: EntityRecord | null) {
-  return fields.reduce<Record<string, string>>((acc, field) => {
-    const value = row?.[field.key];
-    acc[field.key] = typeof value === 'string' ? value : field.defaultValue ?? '';
+function initForm(fields: EntityFormField[], row?: EntityRecord | null): Record<string, string> {
+  return fields.reduce<Record<string, string>>((acc, f) => {
+    const v = row?.[f.key];
+    acc[f.key] = typeof v === 'string' ? v : (typeof v === 'number' ? String(v) : f.defaultValue ?? '');
     return acc;
   }, {});
 }
 
+function StatusBadge({ value }: { value: unknown }) {
+  if (value === true || value === 'ACTIVE' || value === 'ENABLED' || value === 'COMPLETED') {
+    return <span className="badge badge-green">{String(value)}</span>;
+  }
+  if (value === false || value === 'INACTIVE' || value === 'DISABLED' || value === 'CANCELLED' || value === 'SUSPENDED' || value === 'ARCHIVED') {
+    return <span className="badge badge-red">{String(value)}</span>;
+  }
+  return <span className="badge badge-gray">{String(value ?? '-')}</span>;
+}
+
+function Modal({ title, onClose, children, footer }: {
+  title: string; onClose: () => void; children: React.ReactNode; footer: React.ReactNode;
+}) {
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">{footer}</div>
+      </div>
+    </div>
+  );
+}
+
 export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
-  const router = useRouter(); const [token, setToken] = useState(''); const [rows, setRows] = useState<EntityRecord[]>([]); const [error, setError] = useState('');
-  const [q, setQ] = useState(''); const [detail, setDetail] = useState<EntityRecord | null>(null); const [editing, setEditing] = useState<EntityRecord | null>(null);
-  const [page, setPage] = useState(1); const [size] = useState(20); const [total, setTotal] = useState(0);
-  const [canRead, setCanRead] = useState(false); const [canWrite, setCanWrite] = useState(false);
+  const router = useRouter();
+  const [token, setToken] = useState('');
+  const [rows, setRows] = useState<EntityRecord[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [size] = useState(20);
+  const [q, setQ] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [canRead, setCanRead] = useState(false);
+  const [canWrite, setCanWrite] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<Record<string, string>>(() => initForm(config.formFields));
+  const [editing, setEditing] = useState<EntityRecord | null>(null);
   const [editForm, setEditForm] = useState<Record<string, string>>(() => initForm(config.formFields));
+  const [detail, setDetail] = useState<EntityRecord | null>(null);
 
   const statusKey = config.statusField ?? 'enabled';
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / size)), [total, size]);
 
+  function showToast(msg: string, type: 'success' | 'error' = 'success') {
+    setToast({ msg, type });
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
+  }
+
   const load = useCallback(async () => {
-    try { const r = await listEntities(token, config.route, { keyword: q, page, size }); setRows(r.records); setTotal(r.total); }
-    catch (e) { setError((e as Error).message); }
+    if (!token) return;
+    setLoading(true);
+    try {
+      const r = await listEntities(token, config.route, { keyword: q, page, size });
+      setRows(r.records);
+      setTotal(r.total);
+    } catch (e) {
+      showToast((e as Error).message, 'error');
+    } finally {
+      setLoading(false);
+    }
   }, [token, config.route, q, page, size]);
 
   useEffect(() => {
-    const t = localStorage.getItem('access_token'); if (!t) { router.replace('/login'); return; }
+    const t = localStorage.getItem('access_token');
+    if (!t) { router.replace('/login'); return; }
     setToken(t);
-    currentUser(t).then(u => { setCanRead(hasPermission(u, `${config.permissionPrefix}:read`)); setCanWrite(hasPermission(u, `${config.permissionPrefix}:write`)); }).catch(() => router.replace('/login'));
+    currentUser(t)
+      .then(u => {
+        setCanRead(hasPermission(u, `${config.permissionPrefix}:read`));
+        setCanWrite(hasPermission(u, `${config.permissionPrefix}:write`));
+      })
+      .catch(() => router.replace('/login'));
   }, [router, config.permissionPrefix]);
-  useEffect(() => { if (token && canRead) { void load(); } }, [token, canRead, load]);
+
+  useEffect(() => { if (token && canRead) void load(); }, [token, canRead, load]);
   useEffect(() => { setCreateForm(initForm(config.formFields)); }, [config.formFields]);
 
-  if (!canRead) return <AppShell title={config.title}><Card><p className='error'>权限不足：缺少 {config.permissionPrefix}:read</p></Card></AppShell>;
+  async function handleCreate() {
+    try {
+      await createEntity(token, config.route, config.createPayload(createForm));
+      setShowCreate(false);
+      setCreateForm(initForm(config.formFields));
+      showToast('创建成功');
+      void load();
+    } catch (e) {
+      showToast((e as Error).message, 'error');
+    }
+  }
 
-  return <AppShell title={config.title} description={`${config.title}列表、详情、创建、编辑、状态变更`}><Card className='space-y-3'><div className='flex gap-2'><Input value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder='搜索关键词' />
-    {canWrite && <Button onClick={async () => { await createEntity(token, config.route, config.createPayload(createForm)); setCreateForm(initForm(config.formFields)); load(); }}>创建</Button>}</div>
-    {canWrite && <div className='grid grid-cols-2 gap-2'>{config.formFields.map(f => <Input key={f.key} value={createForm[f.key] ?? ''} placeholder={f.placeholder ?? f.label} onChange={e => setCreateForm({ ...createForm, [f.key]: e.target.value })} />)}</div>}
-    {error && <p className='error'>{error}</p>}<div className='space-y-2'>{rows.map(r => <div key={r.id} className='rounded border p-2 flex justify-between'><div>
-      {config.columns.map(c => <p key={c.key}><span className='font-semibold'>{c.title}:</span> {c.render ? c.render(r) : String(r[c.key] ?? '-')}</p>)}
-      <p className='hint'>状态:{String(r[statusKey] ?? 'unknown')}</p></div><div className='flex gap-2'><Button variant='secondary' onClick={async () => setDetail(await getEntity(token, config.route, r.id))}>详情</Button>{canWrite && <><Button variant='secondary' onClick={() => { setEditing(r); setEditForm(initForm(config.formFields, r)); }}>编辑</Button><Button onClick={async () => { await changeEntityStatus(token, config.route, r.id, !(r.enabled ?? true)); load(); }}>状态变更</Button></>}</div></div>)}</div>
-    <div className='flex items-center justify-end gap-2'><Button variant='secondary' onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1}>上一页</Button><span className='hint'>{page}/{totalPages}</span><Button variant='secondary' onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page >= totalPages}>下一页</Button></div>
-  </Card>{detail && <Card><h3 className='font-semibold'>详情抽屉（模拟）</h3><pre>{JSON.stringify(detail, null, 2)}</pre><Button variant='secondary' onClick={() => setDetail(null)}>关闭</Button></Card>}
-    {editing && <Card><h3 className='font-semibold'>编辑</h3><div className='grid grid-cols-2 gap-2'>{config.formFields.map(f => <Input key={f.key} value={editForm[f.key] ?? ''} placeholder={f.placeholder ?? f.label} onChange={e => setEditForm({ ...editForm, [f.key]: e.target.value })} />)}</div><div className='flex gap-2 mt-2'><Button onClick={async () => { await updateEntity(token, config.route, editing.id, config.updatePayload(editForm, editing)); setEditing(null); load(); }}>保存</Button><Button variant='secondary' onClick={() => setEditing(null)}>取消</Button></div></Card>}</AppShell>;
+  async function handleUpdate() {
+    if (!editing) return;
+    try {
+      await updateEntity(token, config.route, editing.id, config.updatePayload(editForm, editing));
+      setEditing(null);
+      showToast('保存成功');
+      void load();
+    } catch (e) {
+      showToast((e as Error).message, 'error');
+    }
+  }
+
+  async function handleStatusChange(row: EntityRecord) {
+    const current = row[statusKey];
+    const isActive = current === true || current === 'ACTIVE' || current === 'ENABLED' || current === 'COMPLETED';
+    try {
+      await changeEntityStatus(token, config.route, row.id, !isActive);
+      showToast('状态已更新');
+      void load();
+    } catch (e) {
+      showToast((e as Error).message, 'error');
+    }
+  }
+
+  async function handleShowDetail(row: EntityRecord) {
+    try {
+      const d = await getEntity(token, config.route, row.id);
+      setDetail(d);
+    } catch (e) {
+      showToast((e as Error).message, 'error');
+    }
+  }
+
+  if (!canRead && token) {
+    return (
+      <AppShell title={config.title}>
+        <div className="rounded-2xl bg-white p-8 shadow-soft text-center">
+          <p className="text-rose-500 font-medium">权限不足：缺少 {config.permissionPrefix}:read</p>
+        </div>
+      </AppShell>
+    );
+  }
+
+  return (
+    <AppShell title={config.title}>
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed right-6 top-6 z-50 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium shadow-lg transition ${toast.type === 'error' ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-200' : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'}`}>
+          <span>{toast.type === 'error' ? '✕' : '✓'}</span>
+          <span>{toast.msg}</span>
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className="mb-4 flex items-center gap-3">
+        <Input
+          value={q}
+          onChange={e => { setQ(e.target.value); setPage(1); }}
+          placeholder="搜索关键词…"
+          className="max-w-xs"
+        />
+        {canWrite && (
+          <Button onClick={() => { setCreateForm(initForm(config.formFields)); setShowCreate(true); }}>
+            + 新建
+          </Button>
+        )}
+        <span className="ml-auto hint">共 {total} 条</span>
+      </div>
+
+      {/* Table */}
+      <div className="table-wrap">
+        <table className="w-full border-collapse">
+          <thead className="border-b border-slate-200 bg-slate-50">
+            <tr>
+              {config.columns.map(c => (
+                <th key={c.key} className="th">{c.title}</th>
+              ))}
+              <th className="th">状态</th>
+              <th className="th text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading && (
+              <tr>
+                <td colSpan={config.columns.length + 2} className="td text-center text-slate-400 py-12">
+                  加载中…
+                </td>
+              </tr>
+            )}
+            {!loading && rows.length === 0 && (
+              <tr>
+                <td colSpan={config.columns.length + 2} className="td text-center text-slate-400 py-12">
+                  暂无数据
+                </td>
+              </tr>
+            )}
+            {!loading && rows.map(row => (
+              <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                {config.columns.map(c => (
+                  <td key={c.key} className="td">
+                    {c.render ? c.render(row) : String(row[c.key] ?? '-')}
+                  </td>
+                ))}
+                <td className="td">
+                  <StatusBadge value={row[statusKey]} />
+                </td>
+                <td className="td">
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => handleShowDetail(row)}
+                      className="btn-ghost"
+                    >
+                      详情
+                    </button>
+                    {canWrite && (
+                      <>
+                        <button
+                          onClick={() => { setEditing(row); setEditForm(initForm(config.formFields, row)); }}
+                          className="btn-ghost"
+                        >
+                          编辑
+                        </button>
+                        <button
+                          onClick={() => handleStatusChange(row)}
+                          className="btn-ghost text-slate-500"
+                        >
+                          切换状态
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="mt-4 flex items-center justify-end gap-2">
+        <Button variant="secondary" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>
+          上一页
+        </Button>
+        <span className="hint px-2">{page} / {totalPages}</span>
+        <Button variant="secondary" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+          下一页
+        </Button>
+      </div>
+
+      {/* Create Modal */}
+      {showCreate && (
+        <Modal
+          title={`新建${config.title}`}
+          onClose={() => setShowCreate(false)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setShowCreate(false)}>取消</Button>
+              <Button onClick={handleCreate}>确认创建</Button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            {config.formFields.map(f => (
+              <div key={f.key}>
+                <label className="label">
+                  {f.label}
+                  {f.required && <span className="ml-0.5 text-rose-500">*</span>}
+                </label>
+                <Input
+                  value={createForm[f.key] ?? ''}
+                  placeholder={f.placeholder ?? `请输入${f.label}`}
+                  onChange={e => setCreateForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit Modal */}
+      {editing && (
+        <Modal
+          title={`编辑${config.title}`}
+          onClose={() => setEditing(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setEditing(null)}>取消</Button>
+              <Button onClick={handleUpdate}>保存</Button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            {config.formFields.map(f => (
+              <div key={f.key}>
+                <label className="label">
+                  {f.label}
+                  {f.required && <span className="ml-0.5 text-rose-500">*</span>}
+                </label>
+                <Input
+                  value={editForm[f.key] ?? ''}
+                  placeholder={f.placeholder ?? `请输入${f.label}`}
+                  onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* Detail Modal */}
+      {detail && (
+        <Modal
+          title="详情"
+          onClose={() => setDetail(null)}
+          footer={<Button variant="secondary" onClick={() => setDetail(null)}>关闭</Button>}
+        >
+          <div className="space-y-3">
+            {Object.entries(detail).map(([k, v]) => (
+              <div key={k} className="flex gap-4">
+                <span className="w-36 flex-shrink-0 text-sm font-semibold text-slate-500">{k}</span>
+                <span className="text-sm text-slate-800 break-all">{String(v ?? '-')}</span>
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+    </AppShell>
+  );
 }

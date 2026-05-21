@@ -4,11 +4,12 @@
 
 @layer base {
   body {
-    @apply bg-slate-100 text-slate-800 antialiased;
+    @apply bg-slate-50 text-slate-800 antialiased;
   }
 }
 
 @layer components {
+  /* ── 认证页布局 ── */
   .page-wrap {
     @apply min-h-screen px-4 py-8 md:px-6;
   }
@@ -17,31 +18,88 @@
     @apply grid place-items-center;
   }
 
+  /* ── 卡片（认证页用，无 max-w 限制） ── */
   .card {
-    @apply w-full max-w-2xl rounded-2xl bg-white p-6 shadow-soft md:p-8;
+    @apply w-full rounded-2xl bg-white p-6 shadow-soft md:p-8;
   }
 
+  /* ── 表单元素 ── */
   .label {
-    @apply mb-2 block text-sm font-semibold text-slate-700;
+    @apply mb-1.5 block text-sm font-semibold text-slate-700;
   }
 
   .input {
     @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-brand/30 transition focus:border-brand focus:ring-4;
   }
 
+  /* ── 按钮 ── */
   .btn {
     @apply inline-flex items-center justify-center rounded-xl border border-brand bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50;
+    @apply inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100;
+  }
+
+  /* ── 文字样式 ── */
   .hint {
     @apply text-sm text-slate-500;
   }
 
   .error {
     @apply text-sm text-rose-600;
+  }
+
+  /* ── 模态框 ── */
+  .modal-overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm;
+  }
+
+  .modal-box {
+    @apply flex w-full max-w-lg flex-col rounded-2xl bg-white shadow-2xl;
+    max-height: 90vh;
+  }
+
+  /* ── 数据表格 ── */
+  .table-wrap {
+    @apply overflow-hidden rounded-2xl bg-white shadow-soft;
+  }
+
+  .th {
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  .td {
+    @apply px-4 py-3 text-sm text-slate-800;
+  }
+
+  /* ── 状态徽章 ── */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+
+  .badge-green {
+    @apply bg-emerald-100 text-emerald-700;
+  }
+
+  .badge-red {
+    @apply bg-rose-100 text-rose-600;
+  }
+
+  .badge-gray {
+    @apply bg-slate-100 text-slate-500;
+  }
+
+  /* ── 侧边栏导航链接 ── */
+  .nav-link {
+    @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-slate-800 hover:text-white;
+  }
+
+  .nav-link-active {
+    @apply bg-brand text-white hover:bg-brand-dark;
   }
 }
