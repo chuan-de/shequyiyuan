@@ -3,11 +3,14 @@ package com.hospital.configmodule.service;
 import com.hospital.configmodule.domain.ConfigStatus;
 import com.hospital.configmodule.domain.SystemConfig;
 import com.hospital.configmodule.dto.SystemConfigUpsertRequest;
+import com.hospital.common.NotFoundException;
 import com.hospital.configmodule.repository.SystemConfigRepository;
 import java.util.List;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class DefaultSystemConfigService implements SystemConfigService {
     private final SystemConfigRepository repository;
 
@@ -16,13 +19,19 @@ public class DefaultSystemConfigService implements SystemConfigService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<SystemConfig> list(String key, ConfigStatus status) {
-        return repository.findAll(key, status);
+        return repository.findAll().stream()
+                .filter(c -> status == null || c.getStatus() == status)
+                .filter(c -> key == null || key.isBlank() ||
+                        c.getConfigKey().toLowerCase().contains(key.toLowerCase()))
+                .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public SystemConfig detail(Long id) {
-        return repository.findById(id).orElseThrow(() -> new IllegalArgumentException("SystemConfig not found"));
+        return repository.findById(id).orElseThrow(() -> new NotFoundException("SystemConfig not found"));
     }
 
     @Override
@@ -33,12 +42,12 @@ public class DefaultSystemConfigService implements SystemConfigService {
     @Override
     public SystemConfig update(Long id, SystemConfigUpsertRequest request, String actor) {
         SystemConfig current = detail(id);
-        return repository.save(new SystemConfig(current.id(), request.configKey(), request.configValue(), current.status(), current.version()));
+        return repository.save(new SystemConfig(current.getId(), request.configKey(), request.configValue(), current.getStatus(), current.getVersion()));
     }
 
     @Override
     public SystemConfig changeStatus(Long id, ConfigStatus targetStatus, String actor) {
         SystemConfig current = detail(id);
-        return repository.save(new SystemConfig(current.id(), current.configKey(), current.configValue(), targetStatus, current.version()));
+        return repository.save(new SystemConfig(current.getId(), current.getConfigKey(), current.getConfigValue(), targetStatus, current.getVersion()));
     }
 }

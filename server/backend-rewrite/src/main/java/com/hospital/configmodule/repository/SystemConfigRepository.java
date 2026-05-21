@@ -1,12 +1,7 @@
 package com.hospital.configmodule.repository;
 
-import com.hospital.configmodule.domain.ConfigStatus;
 import com.hospital.configmodule.domain.SystemConfig;
-import java.util.List;
-import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface SystemConfigRepository {
-    List<SystemConfig> findAll(String key, ConfigStatus status);
-    Optional<SystemConfig> findById(Long id);
-    SystemConfig save(SystemConfig record);
+public interface SystemConfigRepository extends JpaRepository<SystemConfig, Long> {
 }

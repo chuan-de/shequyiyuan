@@ -1,12 +1,7 @@
 package com.hospital.jiuankangdangan.repository;
 
 import com.hospital.jiuankangdangan.domain.JiuankangdanganRecord;
-import com.hospital.jiuankangdangan.domain.JiuankangdanganStatus;
-import java.util.List;
-import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface JiuankangdanganRepository {
-    List<JiuankangdanganRecord> findAll(String keyword, JiuankangdanganStatus status);
-    Optional<JiuankangdanganRecord> findById(Long id);
-    JiuankangdanganRecord save(JiuankangdanganRecord record);
+public interface JiuankangdanganRepository extends JpaRepository<JiuankangdanganRecord, Long> {
 }

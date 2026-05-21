@@ -1,12 +1,7 @@
 package com.hospital.jiatingyisheng.repository;
 
 import com.hospital.jiatingyisheng.domain.FamilyDoctorContract;
-import com.hospital.jiatingyisheng.domain.FamilyDoctorStatus;
-import java.util.List;
-import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface FamilyDoctorRepository {
-    List<FamilyDoctorContract> findAll(String keyword, FamilyDoctorStatus status);
-    Optional<FamilyDoctorContract> findById(Long id);
-    FamilyDoctorContract save(FamilyDoctorContract contract);
+public interface FamilyDoctorRepository extends JpaRepository<FamilyDoctorContract, Long> {
 }

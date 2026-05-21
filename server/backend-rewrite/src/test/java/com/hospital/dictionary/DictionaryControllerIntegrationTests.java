@@ -41,7 +41,7 @@ class DictionaryControllerIntegrationTests {
         mockMvc.perform(get("/api/v1/dictionaries/item/" + id)).andExpect(status().isOk()).andExpect(jsonPath("$.itemCode").value("a1"));
 
         mockMvc.perform(put("/api/v1/dictionaries/" + id).contentType(MediaType.APPLICATION_JSON)
-                .content("""{"dictCode":"test_types","dictName":"测试类型","itemCode":"a1","itemName":"选项A-更新","sortOrder":2,"enabled":true}"""))
+                .content("{\"dictCode\":\"test_types\",\"dictName\":\"测试类型\",\"itemCode\":\"a1\",\"itemName\":\"选项A-更新\",\"sortOrder\":2,\"enabled\":true}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.itemName").value("选项A-更新"));
 
