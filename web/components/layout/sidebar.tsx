@@ -14,6 +14,8 @@ const NAV_ITEMS = [
   { href: '/health-records', label: '健康档案', icon: '❤️' },
   { href: '/configs', label: '系统配置', icon: '⚙️' },
   { href: '/dictionaries', label: '数据字典', icon: '📖' },
+  { href: '/patients', label: '患者管理', icon: '🧑‍⚕️' },
+  { href: '/receptions', label: '前台管理', icon: '🖥️' },
 ];
 
 export function Sidebar() {

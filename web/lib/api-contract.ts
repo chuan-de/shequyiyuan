@@ -11,7 +11,9 @@ export const API_ROUTES = {
   medicalRecords: '/api/v1/medical-records',
   healthRecords: '/api/v1/health-records',
   doctors: '/api/v1/doctors',
-  configs: '/api/v1/configs'
+  configs: '/api/v1/configs',
+  patients: '/api/v1/patients',
+  receptions: '/api/v1/receptions'
 } as const;
 
 export type LoginPayload = { username: string; password: string };

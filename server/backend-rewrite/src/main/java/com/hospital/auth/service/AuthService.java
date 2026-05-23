@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class AuthService {
+public class AuthService implements UserAccountService {
 
     private final AuthenticationManager authenticationManager;
     private final AuthUserDetailsService authUserDetailsService;
@@ -97,6 +97,50 @@ public class AuthService {
             .list());
 
         return new CurrentUserResponse((String) user.get("username"), enabled, roles, List.copyOf(permissions));
+    }
+
+    @Override
+    @Transactional
+    public long createUser(String username, String rawPassword, String roleCode) {
+        Integer existing = jdbcClient.sql("SELECT COUNT(1) FROM app_user WHERE username = :username")
+            .param("username", username)
+            .query(Integer.class)
+            .single();
+        if (existing != null && existing > 0) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+
+        Long userId = jdbcClient.sql("""
+                INSERT INTO app_user (username, password_hash, enabled)
+                VALUES (:username, :passwordHash, true)
+                RETURNING id
+            """)
+            .param("username", username)
+            .param("passwordHash", passwordEncoder.encode(rawPassword))
+            .query(Long.class)
+            .single();
+
+        Long roleId = jdbcClient.sql("SELECT id FROM app_role WHERE role_code = :roleCode")
+            .param("roleCode", roleCode)
+            .query(Long.class)
+            .optional()
+            .orElseThrow(() -> new IllegalStateException("Missing " + roleCode + " role seed data"));
+
+        jdbcClient.sql("INSERT INTO app_user_role (user_id, role_id) VALUES (:userId, :roleId)")
+            .param("userId", userId)
+            .param("roleId", roleId)
+            .update();
+
+        return userId;
+    }
+
+    @Override
+    @Transactional
+    public void setEnabled(long userId, boolean enabled) {
+        jdbcClient.sql("UPDATE app_user SET enabled = :enabled WHERE id = :id")
+            .param("enabled", enabled)
+            .param("id", userId)
+            .update();
     }
 
     @Transactional

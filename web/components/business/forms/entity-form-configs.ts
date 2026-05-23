@@ -1,6 +1,76 @@
 import { EntityPageConfig } from '@/components/business/entity-management-page';
 import { API_ROUTES } from '@/lib/api-contract';
 
+export const patientsPageConfig: EntityPageConfig = {
+  title: '患者管理',
+  route: API_ROUTES.patients,
+  permissionPrefix: 'patients',
+  columns: [
+    { key: 'username', title: '账号' },
+    { key: 'fullName', title: '姓名' },
+    { key: 'phone', title: '手机号' },
+    { key: 'idNumber', title: '身份证号' }
+  ],
+  formFields: [
+    { key: 'username', label: '账号', required: true, placeholder: '请输入登录账号', defaultValue: '' },
+    { key: 'password', label: '密码', required: true, placeholder: '至少6位', defaultValue: '' },
+    { key: 'fullName', label: '姓名', required: true, placeholder: '请输入姓名', defaultValue: '' },
+    { key: 'phone', label: '手机号', placeholder: '请输入手机号', defaultValue: '' },
+    { key: 'idNumber', label: '身份证号', placeholder: '请输入身份证号', defaultValue: '' },
+    { key: 'email', label: '邮箱', placeholder: '请输入邮箱', defaultValue: '' }
+  ],
+  statusField: 'enabled',
+  createPayload: (form) => ({
+    username: form.username,
+    password: form.password,
+    fullName: form.fullName,
+    ...(form.phone ? { phone: form.phone } : {}),
+    ...(form.idNumber ? { idNumber: form.idNumber } : {}),
+    ...(form.email ? { email: form.email } : {})
+  }),
+  updatePayload: (form) => ({
+    fullName: form.fullName,
+    ...(form.phone ? { phone: form.phone } : {}),
+    ...(form.idNumber ? { idNumber: form.idNumber } : {}),
+    ...(form.email ? { email: form.email } : {})
+  })
+};
+
+export const receptionsPageConfig: EntityPageConfig = {
+  title: '前台管理',
+  route: API_ROUTES.receptions,
+  permissionPrefix: 'receptions',
+  columns: [
+    { key: 'username', title: '账号' },
+    { key: 'fullName', title: '姓名' },
+    { key: 'uuidNumber', title: '工号' },
+    { key: 'phone', title: '手机号' }
+  ],
+  formFields: [
+    { key: 'username', label: '账号', required: true, placeholder: '请输入登录账号', defaultValue: '' },
+    { key: 'password', label: '密码', required: true, placeholder: '至少6位', defaultValue: '' },
+    { key: 'fullName', label: '姓名', required: true, placeholder: '请输入姓名', defaultValue: '' },
+    { key: 'uuidNumber', label: '工号', placeholder: '请输入工号', defaultValue: '' },
+    { key: 'phone', label: '手机号', placeholder: '请输入手机号', defaultValue: '' },
+    { key: 'email', label: '邮箱', placeholder: '请输入邮箱', defaultValue: '' }
+  ],
+  statusField: 'enabled',
+  createPayload: (form) => ({
+    username: form.username,
+    password: form.password,
+    fullName: form.fullName,
+    ...(form.uuidNumber ? { uuidNumber: form.uuidNumber } : {}),
+    ...(form.phone ? { phone: form.phone } : {}),
+    ...(form.email ? { email: form.email } : {})
+  }),
+  updatePayload: (form) => ({
+    fullName: form.fullName,
+    ...(form.uuidNumber ? { uuidNumber: form.uuidNumber } : {}),
+    ...(form.phone ? { phone: form.phone } : {}),
+    ...(form.email ? { email: form.email } : {})
+  })
+};
+
 export const medicationsPageConfig: EntityPageConfig = {
   title: 'medications',
   route: API_ROUTES.medications,
