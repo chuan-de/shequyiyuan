@@ -2,30 +2,33 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { clearToken, readToken } from '@/lib/token-storage';
+import { currentUser } from '@/lib/api';
 import { useEffect, useState } from 'react';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: '首页', icon: '⊞' },
-  { href: '/medications', label: '药品管理', icon: '💊' },
-  { href: '/doctors', label: '医生管理', icon: '👨‍⚕️' },
-  { href: '/visits', label: '就诊记录', icon: '📋' },
-  { href: '/family-doctors', label: '家庭医生', icon: '🏠' },
-  { href: '/medical-records', label: '病历管理', icon: '🗂️' },
-  { href: '/health-records', label: '健康档案', icon: '❤️' },
-  { href: '/configs', label: '系统配置', icon: '⚙️' },
-  { href: '/dictionaries', label: '数据字典', icon: '📖' },
-  { href: '/patients', label: '患者管理', icon: '🧑‍⚕️' },
-  { href: '/receptions', label: '前台管理', icon: '🖥️' },
+  { href: '/dashboard', label: '首页', icon: '⊞', permission: null },
+  { href: '/medications', label: '药品管理', icon: '💊', permission: 'medications:read' },
+  { href: '/doctors', label: '医生管理', icon: '👨‍⚕️', permission: 'doctors:read' },
+  { href: '/visits', label: '就诊记录', icon: '📋', permission: 'visits:read' },
+  { href: '/family-doctors', label: '家庭医生', icon: '🏠', permission: 'family-doctors:read' },
+  { href: '/medical-records', label: '病历管理', icon: '🗂️', permission: 'medical-records:read' },
+  { href: '/health-records', label: '健康档案', icon: '❤️', permission: 'health-records:read' },
+  { href: '/configs', label: '系统配置', icon: '⚙️', permission: 'configs:read' },
+  { href: '/dictionaries', label: '数据字典', icon: '📖', permission: 'dictionary:read' },
+  { href: '/patients', label: '患者管理', icon: '🧑‍⚕️', permission: 'patients:read' },
+  { href: '/receptions', label: '前台管理', icon: '🖥️', permission: 'receptions:read' },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [username, setUsername] = useState('');
+  const [permissions, setPermissions] = useState<string[] | null>(null);
 
   useEffect(() => {
     const token = readToken();
     if (!token) return;
+
     const raw = token.accessToken.split('.')[1];
     try {
       const decoded = JSON.parse(atob(raw));
@@ -33,7 +36,15 @@ export function Sidebar() {
     } catch {
       setUsername('用户');
     }
+
+    currentUser(token.accessToken)
+      .then(u => setPermissions(u.permissions))
+      .catch(() => setPermissions([]));
   }, []);
+
+  const visibleItems = NAV_ITEMS.filter(item =>
+    item.permission === null || permissions === null || permissions.includes(item.permission)
+  );
 
   function handleLogout() {
     clearToken();
@@ -48,7 +59,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-        {NAV_ITEMS.map((item) => (
+        {visibleItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
