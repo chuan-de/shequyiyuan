@@ -1,4 +1,4 @@
-package com.hospital.jiatingyisheng;
+package com.hospital.visit;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -21,7 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureMockMvc
 @Testcontainers
 @ActiveProfiles("test")
-class FamilyDoctorControllerIntegrationTests {
+class VisitControllerIntegrationTests {
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -39,45 +39,45 @@ class FamilyDoctorControllerIntegrationTests {
 
     @Test
     void list_withoutAuthentication_shouldReturn401() throws Exception {
-        mockMvc.perform(get("/api/v1/family-doctors")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/visits")).andExpect(status().isUnauthorized());
     }
 
     @Test
-    @WithMockUser(authorities = {"family-doctors:read"})
+    @WithMockUser(authorities = {"visits:read"})
     void create_withReadOnlyAuthority_shouldReturn403() throws Exception {
-        mockMvc.perform(post("/api/v1/family-doctors")
+        mockMvc.perform(post("/api/v1/visits")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"residentId":1,"doctorId":2}
+                                {"patientName":"Wang Fang","doctorName":"Dr. Li"}
                                 """))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(authorities = {"family-doctors:read", "family-doctors:write", "family-doctors:status"})
+    @WithMockUser(authorities = {"visits:read", "visits:write", "visits:status"})
     void crudFlow_shouldSucceed() throws Exception {
-        String created = mockMvc.perform(post("/api/v1/family-doctors")
+        String created = mockMvc.perform(post("/api/v1/visits")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"residentId":100,"doctorId":200}
+                                {"patientName":"Wang Fang","doctorName":"Dr. Li"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.residentId").value(100))
+                .andExpect(jsonPath("$.data.patientName").value("Wang Fang"))
                 .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andReturn().getResponse().getContentAsString();
 
         String id = created.replaceAll(".*\"id\":(\\d+).*", "$1");
 
-        mockMvc.perform(get("/api/v1/family-doctors"))
+        mockMvc.perform(get("/api/v1/visits"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(1));
 
-        mockMvc.perform(patch("/api/v1/family-doctors/" + id + "/status")
+        mockMvc.perform(patch("/api/v1/visits/" + id + "/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"targetStatus":"ACTIVE","reason":"approved"}
+                                {"targetStatus":"COMPLETED"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
     }
 }

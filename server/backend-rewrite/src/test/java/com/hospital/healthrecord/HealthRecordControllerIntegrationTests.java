@@ -1,4 +1,4 @@
-package com.hospital.yaopin;
+package com.hospital.healthrecord;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -21,7 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureMockMvc
 @Testcontainers
 @ActiveProfiles("test")
-class MedicationControllerIntegrationTests {
+class HealthRecordControllerIntegrationTests {
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -39,71 +39,45 @@ class MedicationControllerIntegrationTests {
 
     @Test
     void list_withoutAuthentication_shouldReturn401() throws Exception {
-        mockMvc.perform(get("/api/v1/medications")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/health-records")).andExpect(status().isUnauthorized());
     }
 
     @Test
-    @WithMockUser(authorities = {"medications:read"})
+    @WithMockUser(authorities = {"health-records:read", "jiuankangdangan:read"})
     void create_withReadOnlyAuthority_shouldReturn403() throws Exception {
-        mockMvc.perform(post("/api/v1/medications")
+        mockMvc.perform(post("/api/v1/health-records")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"code":"MED001","name":"Aspirin"}
+                                {"yonghuId":1,"jiuankangdanganName":"基础档案","jiuankangdanganQita":"无","jiuankangdanganTypes":1,"insertTime":"2026-01-01T10:00:00","jiuankangdanganContent":"健康"}
                                 """))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(authorities = {"medications:read", "medications:write", "medications:status"})
+    @WithMockUser(authorities = {"health-records:read", "jiuankangdangan:read", "jiuankangdangan:write", "jiuankangdangan:status"})
     void crudFlow_shouldSucceed() throws Exception {
-        String created = mockMvc.perform(post("/api/v1/medications")
+        String created = mockMvc.perform(post("/api/v1/health-records")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"code":"MED001","name":"Aspirin"}
+                                {"yonghuId":1,"jiuankangdanganName":"基础健康档案","jiuankangdanganQita":"无异常","jiuankangdanganTypes":1,"insertTime":"2026-01-01T10:00:00","jiuankangdanganContent":"患者整体健康状况良好"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.code").value("MED001"))
-                .andExpect(jsonPath("$.data.status").value("ENABLED"))
+                .andExpect(jsonPath("$.data.jiuankangdanganName").value("基础健康档案"))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))
                 .andReturn().getResponse().getContentAsString();
 
         String id = created.replaceAll(".*\"id\":(\\d+).*", "$1");
 
-        mockMvc.perform(get("/api/v1/medications"))
+        mockMvc.perform(get("/api/v1/health-records"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(1));
 
-        mockMvc.perform(put("/api/v1/medications/" + id)
+        mockMvc.perform(patch("/api/v1/health-records/" + id + "/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"code":"MED001","name":"Aspirin 500mg"}
+                                {"targetStatus":"ACTIVE"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.name").value("Aspirin 500mg"));
-
-        mockMvc.perform(patch("/api/v1/medications/" + id + "/status")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"targetStatus":"DISABLED"}
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("DISABLED"));
-    }
-
-    @Test
-    @WithMockUser(authorities = {"medications:read"})
-    void detail_forNonexistentId_shouldReturn404() throws Exception {
-        mockMvc.perform(get("/api/v1/medications/999999"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @WithMockUser(authorities = {"medications:read", "medications:write"})
-    void create_withMissingRequiredFields_shouldReturn400() throws Exception {
-        mockMvc.perform(post("/api/v1/medications")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"code":""}
-                                """))
-                .andExpect(status().isBadRequest());
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
     }
 }

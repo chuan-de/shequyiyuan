@@ -1,4 +1,4 @@
-package com.hospital.configmodule;
+package com.hospital.medication;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -21,7 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureMockMvc
 @Testcontainers
 @ActiveProfiles("test")
-class SystemConfigControllerIntegrationTests {
+class MedicationControllerIntegrationTests {
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -39,53 +39,71 @@ class SystemConfigControllerIntegrationTests {
 
     @Test
     void list_withoutAuthentication_shouldReturn401() throws Exception {
-        mockMvc.perform(get("/api/v1/configs")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/medications")).andExpect(status().isUnauthorized());
     }
 
     @Test
-    @WithMockUser(authorities = {"configs:read"})
+    @WithMockUser(authorities = {"medications:read"})
     void create_withReadOnlyAuthority_shouldReturn403() throws Exception {
-        mockMvc.perform(post("/api/v1/configs")
+        mockMvc.perform(post("/api/v1/medications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"configKey":"site.name","configValue":"Community Hospital"}
+                                {"code":"MED001","name":"Aspirin"}
                                 """))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(authorities = {"configs:read", "configs:write", "configs:status"})
+    @WithMockUser(authorities = {"medications:read", "medications:write", "medications:status"})
     void crudFlow_shouldSucceed() throws Exception {
-        String created = mockMvc.perform(post("/api/v1/configs")
+        String created = mockMvc.perform(post("/api/v1/medications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"configKey":"site.name","configValue":"Community Hospital"}
+                                {"code":"MED001","name":"Aspirin"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.configKey").value("site.name"))
+                .andExpect(jsonPath("$.data.code").value("MED001"))
                 .andExpect(jsonPath("$.data.status").value("ENABLED"))
                 .andReturn().getResponse().getContentAsString();
 
         String id = created.replaceAll(".*\"id\":(\\d+).*", "$1");
 
-        mockMvc.perform(get("/api/v1/configs"))
+        mockMvc.perform(get("/api/v1/medications"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(1));
 
-        mockMvc.perform(put("/api/v1/configs/" + id)
+        mockMvc.perform(put("/api/v1/medications/" + id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"configKey":"site.name","configValue":"City Community Hospital"}
+                                {"code":"MED001","name":"Aspirin 500mg"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.configValue").value("City Community Hospital"));
+                .andExpect(jsonPath("$.data.name").value("Aspirin 500mg"));
 
-        mockMvc.perform(patch("/api/v1/configs/" + id + "/status")
+        mockMvc.perform(patch("/api/v1/medications/" + id + "/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"targetStatus":"DISABLED"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("DISABLED"));
+    }
+
+    @Test
+    @WithMockUser(authorities = {"medications:read"})
+    void detail_forNonexistentId_shouldReturn404() throws Exception {
+        mockMvc.perform(get("/api/v1/medications/999999"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(authorities = {"medications:read", "medications:write"})
+    void create_withMissingRequiredFields_shouldReturn400() throws Exception {
+        mockMvc.perform(post("/api/v1/medications")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"code":""}
+                                """))
+                .andExpect(status().isBadRequest());
     }
 }

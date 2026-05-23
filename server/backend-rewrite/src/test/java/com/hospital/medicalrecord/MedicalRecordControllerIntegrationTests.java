@@ -1,4 +1,4 @@
-package com.hospital.jiuzhen;
+package com.hospital.medicalrecord;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -21,7 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureMockMvc
 @Testcontainers
 @ActiveProfiles("test")
-class VisitControllerIntegrationTests {
+class MedicalRecordControllerIntegrationTests {
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -39,45 +39,45 @@ class VisitControllerIntegrationTests {
 
     @Test
     void list_withoutAuthentication_shouldReturn401() throws Exception {
-        mockMvc.perform(get("/api/v1/visits")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/medical-records")).andExpect(status().isUnauthorized());
     }
 
     @Test
-    @WithMockUser(authorities = {"visits:read"})
+    @WithMockUser(authorities = {"medical-records:read", "bingli:read"})
     void create_withReadOnlyAuthority_shouldReturn403() throws Exception {
-        mockMvc.perform(post("/api/v1/visits")
+        mockMvc.perform(post("/api/v1/medical-records")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"patientName":"Wang Fang","doctorName":"Dr. Li"}
+                                {"yishengId":1,"yonghuId":2,"bingliUuidNumber":"BL001","bingliName":"感冒","bingliBingqing":"发热","jianchaxiangmu":"血常规","jianchajieguo":"正常"}
                                 """))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(authorities = {"visits:read", "visits:write", "visits:status"})
+    @WithMockUser(authorities = {"medical-records:read", "bingli:read", "bingli:write", "bingli:status"})
     void crudFlow_shouldSucceed() throws Exception {
-        String created = mockMvc.perform(post("/api/v1/visits")
+        String created = mockMvc.perform(post("/api/v1/medical-records")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"patientName":"Wang Fang","doctorName":"Dr. Li"}
+                                {"yishengId":1,"yonghuId":2,"bingliUuidNumber":"BL001","bingliName":"感冒","bingliBingqing":"发热咳嗽","jianchaxiangmu":"血常规","jianchajieguo":"白细胞升高"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.patientName").value("Wang Fang"))
-                .andExpect(jsonPath("$.data.status").value("PENDING"))
+                .andExpect(jsonPath("$.data.bingliName").value("感冒"))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))
                 .andReturn().getResponse().getContentAsString();
 
         String id = created.replaceAll(".*\"id\":(\\d+).*", "$1");
 
-        mockMvc.perform(get("/api/v1/visits"))
+        mockMvc.perform(get("/api/v1/medical-records"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(1));
 
-        mockMvc.perform(patch("/api/v1/visits/" + id + "/status")
+        mockMvc.perform(patch("/api/v1/medical-records/" + id + "/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"targetStatus":"COMPLETED"}
+                                {"targetStatus":"ACTIVE"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
     }
 }

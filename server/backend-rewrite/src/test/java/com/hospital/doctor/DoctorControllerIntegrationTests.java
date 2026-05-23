@@ -1,4 +1,4 @@
-package com.hospital.jiuankangdangan;
+package com.hospital.doctor;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -21,7 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureMockMvc
 @Testcontainers
 @ActiveProfiles("test")
-class JiuankangdanganControllerIntegrationTests {
+class DoctorControllerIntegrationTests {
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -39,45 +39,60 @@ class JiuankangdanganControllerIntegrationTests {
 
     @Test
     void list_withoutAuthentication_shouldReturn401() throws Exception {
-        mockMvc.perform(get("/api/v1/health-records")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/doctors")).andExpect(status().isUnauthorized());
     }
 
     @Test
-    @WithMockUser(authorities = {"health-records:read", "jiuankangdangan:read"})
+    @WithMockUser(authorities = {"doctors:read"})
     void create_withReadOnlyAuthority_shouldReturn403() throws Exception {
-        mockMvc.perform(post("/api/v1/health-records")
+        mockMvc.perform(post("/api/v1/doctors")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"yonghuId":1,"jiuankangdanganName":"基础档案","jiuankangdanganQita":"无","jiuankangdanganTypes":1,"insertTime":"2026-01-01T10:00:00","jiuankangdanganContent":"健康"}
+                                {"name":"Dr. Zhang","department":"内科"}
                                 """))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(authorities = {"health-records:read", "jiuankangdangan:read", "jiuankangdangan:write", "jiuankangdangan:status"})
+    @WithMockUser(authorities = {"doctors:read", "doctors:write", "doctors:status"})
     void crudFlow_shouldSucceed() throws Exception {
-        String created = mockMvc.perform(post("/api/v1/health-records")
+        String created = mockMvc.perform(post("/api/v1/doctors")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"yonghuId":1,"jiuankangdanganName":"基础健康档案","jiuankangdanganQita":"无异常","jiuankangdanganTypes":1,"insertTime":"2026-01-01T10:00:00","jiuankangdanganContent":"患者整体健康状况良好"}
+                                {"name":"Dr. Zhang","department":"内科"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.jiuankangdanganName").value("基础健康档案"))
-                .andExpect(jsonPath("$.data.status").value("DRAFT"))
+                .andExpect(jsonPath("$.data.name").value("Dr. Zhang"))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
                 .andReturn().getResponse().getContentAsString();
 
         String id = created.replaceAll(".*\"id\":(\\d+).*", "$1");
 
-        mockMvc.perform(get("/api/v1/health-records"))
+        mockMvc.perform(get("/api/v1/doctors"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(1));
 
-        mockMvc.perform(patch("/api/v1/health-records/" + id + "/status")
+        mockMvc.perform(put("/api/v1/doctors/" + id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"targetStatus":"ACTIVE"}
+                                {"name":"Dr. Zhang Wei","department":"外科"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+                .andExpect(jsonPath("$.data.department").value("外科"));
+
+        mockMvc.perform(patch("/api/v1/doctors/" + id + "/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"targetStatus":"INACTIVE"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("INACTIVE"));
+    }
+
+    @Test
+    @WithMockUser(authorities = {"doctors:read"})
+    void detail_forNonexistentId_shouldReturn404() throws Exception {
+        mockMvc.perform(get("/api/v1/doctors/999999"))
+                .andExpect(status().isNotFound());
     }
 }
