@@ -5,4 +5,6 @@ public interface UserAccountService {
     long createUser(String username, String rawPassword, String roleCode);
 
     void setEnabled(long userId, boolean enabled);
+
+    void resetPassword(long userId, String newPassword);
 }

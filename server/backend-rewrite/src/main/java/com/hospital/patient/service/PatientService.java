@@ -11,4 +11,5 @@ public interface PatientService {
     PatientResponse create(PatientCreateRequest request, String actor);
     PatientResponse update(Long id, PatientUpdateRequest request, String actor);
     PatientResponse changeStatus(Long id, boolean enabled, String actor);
+    void resetPassword(Long id, String newPassword);
 }

@@ -4,6 +4,7 @@ import com.hospital.common.ApiResponse;
 import com.hospital.common.PageQueryUtils;
 import com.hospital.common.PageResponse;
 import com.hospital.reception.dto.ReceptionCreateRequest;
+import com.hospital.reception.dto.ReceptionResetPasswordRequest;
 import com.hospital.reception.dto.ReceptionResponse;
 import com.hospital.reception.dto.ReceptionStatusChangeRequest;
 import com.hospital.reception.dto.ReceptionUpdateRequest;
@@ -65,6 +66,15 @@ public class ReceptionController {
             @RequestBody @Valid ReceptionStatusChangeRequest request,
             Principal principal) {
         return ApiResponse.ok(receptionService.changeStatus(id, request.enabled(), actor(principal)));
+    }
+
+    @PatchMapping("/{id}/reset-password")
+    @PreAuthorize("hasAuthority('receptions:reset-password')")
+    public ApiResponse<Void> resetPassword(
+            @PathVariable Long id,
+            @RequestBody @Valid ReceptionResetPasswordRequest request) {
+        receptionService.resetPassword(id, request.newPassword());
+        return ApiResponse.ok(null);
     }
 
     private static String actor(Principal principal) {

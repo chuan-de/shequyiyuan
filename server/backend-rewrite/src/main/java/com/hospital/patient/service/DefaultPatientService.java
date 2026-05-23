@@ -42,7 +42,7 @@ public class DefaultPatientService implements PatientService {
     @Transactional(readOnly = true)
     public List<PatientResponse> list(String keyword) {
         String sql = SELECT_SQL + """
-                WHERE (:keyword IS NULL
+                WHERE (CAST(:keyword AS TEXT) IS NULL
                     OR pp.full_name ILIKE '%' || :keyword || '%'
                     OR au.username ILIKE '%' || :keyword || '%')
                 ORDER BY pp.created_at DESC
@@ -117,6 +117,13 @@ public class DefaultPatientService implements PatientService {
                 .orElseThrow(() -> new NotFoundException("Patient not found"));
         userAccountService.setEnabled(profile.getUserId(), enabled);
         return detail(id);
+    }
+
+    @Override
+    public void resetPassword(Long id, String newPassword) {
+        PatientProfile profile = profileRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Patient not found"));
+        userAccountService.resetPassword(profile.getUserId(), newPassword);
     }
 
     private PatientResponse mapRow(ResultSet rs, int rowNum) throws SQLException {

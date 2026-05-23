@@ -4,6 +4,7 @@ import com.hospital.common.ApiResponse;
 import com.hospital.common.PageQueryUtils;
 import com.hospital.common.PageResponse;
 import com.hospital.patient.dto.PatientCreateRequest;
+import com.hospital.patient.dto.PatientResetPasswordRequest;
 import com.hospital.patient.dto.PatientResponse;
 import com.hospital.patient.dto.PatientStatusChangeRequest;
 import com.hospital.patient.dto.PatientUpdateRequest;
@@ -65,6 +66,15 @@ public class PatientController {
             @RequestBody @Valid PatientStatusChangeRequest request,
             Principal principal) {
         return ApiResponse.ok(patientService.changeStatus(id, request.enabled(), actor(principal)));
+    }
+
+    @PatchMapping("/{id}/reset-password")
+    @PreAuthorize("hasAuthority('patients:reset-password')")
+    public ApiResponse<Void> resetPassword(
+            @PathVariable Long id,
+            @RequestBody @Valid PatientResetPasswordRequest request) {
+        patientService.resetPassword(id, request.newPassword());
+        return ApiResponse.ok(null);
     }
 
     private static String actor(Principal principal) {

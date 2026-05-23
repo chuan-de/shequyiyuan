@@ -46,9 +46,14 @@ export async function queryDictionaryItems(token: string, query: ListQuery & { d
   });
   return unwrapResponse(await apiFetch(`${API_ROUTES.dictionaryItems(query.dictCode)}?${p.toString()}`, { headers: authHeader(token), cache:'no-store' }));
 }
-export async function listEntities(token: string, route: string, query: ListQuery = {}): Promise<PageResponse<EntityRecord>> {
-  const p = new URLSearchParams(); Object.entries(query).forEach(([k,v])=>v!==undefined&&p.set(k,String(v)));
-  return unwrapResponse(await apiFetch(`${route}?${p.toString()}`, { headers: authHeader(token), cache:'no-store' }));
+export async function listEntities(
+  token: string,
+  route: string,
+  params: { keyword?: string; page?: number; size?: number; [key: string]: string | number | undefined } = {}
+): Promise<PageResponse<EntityRecord>> {
+  const p = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v !== undefined) p.set(k, String(v)); });
+  return unwrapResponse(await apiFetch(`${route}?${p.toString()}`, { headers: authHeader(token), cache: 'no-store' }));
 }
 export async function getEntity(token: string, route: string, id: number): Promise<EntityRecord> { return unwrapResponse(await apiFetch(`${route}/${id}`, { headers: authHeader(token), cache:'no-store' })); }
 export async function createEntity(token: string, route: string, payload: Record<string, unknown>): Promise<void> { await unwrapResponse(await apiFetch(route,{method:'POST',headers:{...authHeader(token),'Content-Type':'application/json'},body:JSON.stringify(payload)})); }

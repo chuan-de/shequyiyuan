@@ -13,7 +13,8 @@ export const API_ROUTES = {
   doctors: '/api/v1/doctors',
   configs: '/api/v1/configs',
   patients: '/api/v1/patients',
-  receptions: '/api/v1/receptions'
+  receptions: '/api/v1/receptions',
+  departments: '/api/v1/departments'
 } as const;
 
 export type LoginPayload = { username: string; password: string };

@@ -11,4 +11,5 @@ public interface ReceptionService {
     ReceptionResponse create(ReceptionCreateRequest request, String actor);
     ReceptionResponse update(Long id, ReceptionUpdateRequest request, String actor);
     ReceptionResponse changeStatus(Long id, boolean enabled, String actor);
+    void resetPassword(Long id, String newPassword);
 }

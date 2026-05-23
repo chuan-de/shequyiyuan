@@ -42,7 +42,7 @@ public class DefaultReceptionService implements ReceptionService {
     @Transactional(readOnly = true)
     public List<ReceptionResponse> list(String keyword) {
         String sql = SELECT_SQL + """
-                WHERE (:keyword IS NULL
+                WHERE (CAST(:keyword AS TEXT) IS NULL
                     OR rp.full_name ILIKE '%' || :keyword || '%'
                     OR au.username ILIKE '%' || :keyword || '%')
                 ORDER BY rp.created_at DESC
@@ -118,6 +118,13 @@ public class DefaultReceptionService implements ReceptionService {
                 .orElseThrow(() -> new NotFoundException("Reception staff not found"));
         userAccountService.setEnabled(profile.getUserId(), enabled);
         return detail(id);
+    }
+
+    @Override
+    public void resetPassword(Long id, String newPassword) {
+        ReceptionProfile profile = profileRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Reception staff not found"));
+        userAccountService.resetPassword(profile.getUserId(), newPassword);
     }
 
     private ReceptionResponse mapRow(ResultSet rs, int rowNum) throws SQLException {

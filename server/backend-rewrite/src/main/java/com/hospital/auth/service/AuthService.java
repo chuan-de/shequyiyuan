@@ -143,6 +143,21 @@ public class AuthService implements UserAccountService {
             .update();
     }
 
+    @Override
+    @Transactional
+    public void resetPassword(long userId, String newPassword) {
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new IllegalArgumentException("Password must be at least 6 characters");
+        }
+        int rows = jdbcClient.sql("UPDATE app_user SET password_hash = :hash WHERE id = :id")
+            .param("hash", passwordEncoder.encode(newPassword))
+            .param("id", userId)
+            .update();
+        if (rows == 0) {
+            throw new com.hospital.common.NotFoundException("User not found");
+        }
+    }
+
     @Transactional
     public void register(RegisterRequest request) {
         Integer existing = jdbcClient.sql("SELECT COUNT(1) FROM app_user WHERE username = :username")

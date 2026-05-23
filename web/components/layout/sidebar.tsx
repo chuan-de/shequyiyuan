@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: '/health-records', label: '健康档案', icon: '❤️', permission: 'health-records:read' },
   { href: '/configs', label: '系统配置', icon: '⚙️', permission: 'configs:read' },
   { href: '/dictionaries', label: '数据字典', icon: '📖', permission: 'dictionary:read' },
+  { href: '/departments', label: '科室管理', icon: '🏥', permission: 'departments:read' },
   { href: '/patients', label: '患者管理', icon: '🧑‍⚕️', permission: 'patients:read' },
   { href: '/receptions', label: '前台管理', icon: '🖥️', permission: 'receptions:read' },
 ];
