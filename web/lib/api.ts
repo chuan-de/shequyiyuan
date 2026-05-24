@@ -1,5 +1,5 @@
-import { API_ROUTES, type ApiErrorResponse, type ApiResponse, type AuthResponse, type CurrentUserResponse, type DictionaryItemResponse, type DictionaryResponse, type EntityRecord, errorCodeMessages, type HealthResponse, type LoginPayload, type RegisterPayload, type StatusChangeRequest, type StatusManagedRoute } from './api-contract';
-export type { EntityRecord, CurrentUserResponse, DictionaryItemResponse, DictionaryResponse } from './api-contract';
+import { API_ROUTES, type AiVisionRequest, type AiVisionResponse, type ApiErrorResponse, type ApiResponse, type AuthResponse, type CurrentUserResponse, type DictionaryItemResponse, type DictionaryResponse, type EntityRecord, errorCodeMessages, type HealthResponse, type LoginPayload, type RegisterPayload, type StatusChangeRequest, type StatusManagedRoute } from './api-contract';
+export type { EntityRecord, CurrentUserResponse, DictionaryItemResponse, DictionaryResponse, AiVisionResponse, MedicalRecordFields } from './api-contract';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 const TRACE_ID_HEADER = 'X-Trace-Id';
@@ -83,6 +83,37 @@ export async function updateEntity(token: string, route: string, id: number, pay
 export async function deleteEntity(token: string, route: string, id: number | string): Promise<void> {
   await unwrapResponse(await apiFetch(`${route}/${id}`, { method: 'DELETE', headers: authHeader(token) }));
 }
+/**
+ * Call the backend AI Vision OCR endpoint. Maps friendly Chinese messages to
+ * the common HTTP error shapes so the UI doesn't have to repeat the table.
+ * Accepts either a {photoId} or an inline {base64, contentType} payload —
+ * the controller validates and returns 400 if neither is present.
+ */
+export async function parseMedicalRecordPhoto(token: string, payload: AiVisionRequest): Promise<AiVisionResponse> {
+  const response = await apiFetch(API_ROUTES.aiVisionParseMedicalRecord, {
+    method: 'POST',
+    headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    if (response.status === 401) throw new Error('登录已过期，请重新登录');
+    if (response.status === 403) throw new Error('当前账号无 AI 识别权限（ai:vision）');
+    if (response.status === 429) {
+      let detail = '请稍后重试';
+      try {
+        const body = await response.json();
+        if (body?.reason === 'qpm') detail = '调用太频繁，请稍候再试';
+        else if (body?.reason === 'daily-token-budget') detail = '今日 AI 配额已用尽，请明天再试';
+      } catch { /* ignore */ }
+      throw new Error('AI 调用频率超限：' + detail);
+    }
+    if (response.status === 400) throw new Error('AI 识别请求参数无效');
+    if (response.status >= 500) throw new Error('AI 服务暂时不可用，请稍后再试');
+    throw await parseError(response);
+  }
+  return (await response.json() as ApiResponse<AiVisionResponse>).data;
+}
+
 export async function changeEntityStatus(token: string, route: string, id: number, enabled: boolean): Promise<void> {
   const mapper = statusChangeByRoute[route as StatusManagedRoute];
   const payload = mapper ? mapper(enabled) : ({ enabled } as Record<string, unknown>);

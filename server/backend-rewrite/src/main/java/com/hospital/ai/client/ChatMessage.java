@@ -3,6 +3,9 @@ package com.hospital.ai.client;
 import java.util.List;
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  * OpenAI-compatible chat message.
  *
@@ -46,7 +49,15 @@ public final class ChatMessage {
         return String.valueOf(content);
     }
 
-    /** Multimodal content part — either a text block or an image URL. */
+    /**
+     * Multimodal content part — either a text block or an image URL.
+     *
+     * <p>Jackson serialisation is pinned to the OpenAI / Doubao wire shape:
+     * {@code {"type":"image_url","image_url":{"url":"..."}}}. Null fields are
+     * stripped so a text part doesn't leak {@code image_url: null} into the
+     * payload (some upstream gateways reject mixed-shape parts).</p>
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static final class ContentPart {
         private final String type;
         private final String text;
@@ -68,6 +79,8 @@ public final class ChatMessage {
 
         public String getType() { return type; }
         public String getText() { return text; }
+
+        @JsonProperty("image_url")
         public ImageUrl getImageUrl() { return imageUrl; }
     }
 

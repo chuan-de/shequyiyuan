@@ -1,12 +1,13 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { EntityManagementPage, EntityPageConfig } from '@/components/business/entity-management-page';
+import { EntityManagementPage, EntityPageConfig, CustomFieldContext } from '@/components/business/entity-management-page';
 import { medicalRecordsPageConfig } from './entity-form-configs';
-import { API_ROUTES, EntityRecord } from '@/lib/api-contract';
-import { listEntities } from '@/lib/api';
+import { API_ROUTES, EntityRecord, AiVisionResponse, MedicalRecordFields } from '@/lib/api-contract';
+import { listEntities, parseMedicalRecordPhoto } from '@/lib/api';
 import { readToken } from '@/lib/token-storage';
 import { MultiFileUploader, AttachmentItem } from '@/components/ui/file-upload';
 import { Select } from '@/components/ui/select';
+import { AiSuggestionPanel, SuggestionFieldKey } from '@/components/business/ai-suggestion-panel';
 
 type PrescriptionItem = { medicationId: number; name: string; quantity: number };
 
@@ -73,18 +74,144 @@ function PrescriptionPicker({
   );
 }
 
+/**
+ * Pull the photo UUID out of the photo URL stored on an attachment.
+ * URLs follow the shape /api/v1/photos/{uuid}/content (or the absolute
+ * equivalent), so we match the segment between /photos/ and /content.
+ */
+function extractPhotoId(url: string): string | null {
+  const m = url.match(/\/photos\/([0-9a-fA-F-]{36})(?:\/content)?/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Field-to-target mapping: where each AI suggestion lands in the form.
+ *
+ * The form binds patient / doctor / gender / age via dropdowns + lookups,
+ * not free text, so we skip those keys here — the medic will pick the
+ * matching record manually. chiefComplaint + presentIllness both fold into
+ * the single conditionDesc textarea (concatenated on apply).
+ */
+const FIELD_TO_FORM: Partial<Record<SuggestionFieldKey, string>> = {
+  visitDate: 'recordDate',
+  department: 'examItems',
+  chiefComplaint: 'conditionDesc',
+  presentIllness: 'conditionDesc',
+  diagnosis: 'caseName',
+  prescription: 'examResults',
+};
+
 function AttachmentsField({
-  value, onChange,
+  value, onChange, ctx,
 }: {
   value: string;
   onChange: (next: string) => void;
+  ctx: CustomFieldContext;
 }) {
   const items = safeParse<AttachmentItem[]>(value || '[]', []);
+  const canUseAi = ctx.permissions.includes('ai:vision');
+
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [response, setResponse] = useState<AiVisionResponse | null>(null);
+
+  async function runAiOnImage(url: string) {
+    const photoId = extractPhotoId(url);
+    if (!photoId) {
+      setError('无法从图片地址识别 photoId');
+      setPanelOpen(true);
+      return;
+    }
+    setPanelOpen(true);
+    setLoading(true);
+    setError(null);
+    setResponse(null);
+    try {
+      const t = readToken();
+      if (!t) throw new Error('登录已过期');
+      const result = await parseMedicalRecordPhoto(t.accessToken, { photoId });
+      setResponse(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '识别失败');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function applySuggestions(picked: Partial<MedicalRecordFields>) {
+    // Translate AI field keys into the form's actual field keys, merging
+    // chiefComplaint + presentIllness into the single conditionDesc field
+    // when both are picked.
+    const patch: Record<string, string> = {};
+    const condParts: string[] = [];
+    Object.entries(picked).forEach(([key, val]) => {
+      if (val === null || val === undefined || val === '') return;
+      const targetKey = FIELD_TO_FORM[key as SuggestionFieldKey];
+      if (!targetKey) return;
+      let coerced = String(val);
+      // The form's recordDate uses <input type="datetime-local"> which expects
+      // YYYY-MM-DDTHH:mm. Promote a bare date to noon local time so the date
+      // doesn't slip a day under TZ conversion.
+      if (targetKey === 'recordDate' && /^\d{4}-\d{2}-\d{2}$/.test(coerced)) {
+        coerced = coerced + 'T12:00';
+      }
+      if (targetKey === 'conditionDesc') {
+        condParts.push(coerced);
+      } else {
+        patch[targetKey] = coerced;
+      }
+    });
+    if (condParts.length > 0) {
+      const existing = ctx.getFormValue('conditionDesc');
+      patch.conditionDesc = existing ? existing + '\n' + condParts.join('\n') : condParts.join('\n');
+    }
+    ctx.patchForm(patch);
+    setPanelOpen(false);
+  }
+
+  function formHasValueFor(key: SuggestionFieldKey): boolean {
+    const targetKey = FIELD_TO_FORM[key];
+    if (!targetKey) return false;
+    const value = ctx.getFormValue(targetKey);
+    return value !== undefined && value !== null && value !== '';
+  }
+
   return (
-    <MultiFileUploader
-      value={items}
-      onChange={(next) => onChange(JSON.stringify(next))}
-    />
+    <div className="space-y-2">
+      <MultiFileUploader
+        value={items}
+        onChange={(next) => onChange(JSON.stringify(next))}
+      />
+      {canUseAi && items.length > 0 && (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {items.map((it, idx) => {
+            const isImg = it.contentType?.startsWith('image/');
+            if (!isImg) return null;
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => runAiOnImage(it.url)}
+                className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                title={it.filename}
+              >
+                AI 识别：{it.filename}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <AiSuggestionPanel
+        open={panelOpen}
+        loading={loading}
+        error={error}
+        response={response}
+        formHasValueFor={formHasValueFor}
+        onApply={applySuggestions}
+        onClose={() => setPanelOpen(false)}
+      />
+    </div>
   );
 }
 
@@ -166,8 +293,8 @@ export function MedicalRecordManagementPage() {
         };
         if (f.key === 'attachments') return {
           ...f,
-          customRender: (value, onChange) => (
-            <AttachmentsField value={value} onChange={onChange} />
+          customRender: (value, onChange, _mode, ctx) => (
+            <AttachmentsField value={value} onChange={onChange} ctx={ctx} />
           ),
         };
         return f;

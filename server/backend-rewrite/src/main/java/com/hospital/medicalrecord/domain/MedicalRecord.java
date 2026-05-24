@@ -73,6 +73,10 @@ public class MedicalRecord {
     @Column(name = "attachments", columnDefinition = "jsonb")
     private List<Map<String, Object>> attachments;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "ai_extracted", columnDefinition = "jsonb")
+    private Map<String, Object> aiExtracted;
+
     @Column(name = "record_date")
     private Instant recordDate;
 
@@ -144,6 +148,8 @@ public class MedicalRecord {
     public String getExamResults() { return examResults; }
     public List<Map<String, Object>> getPrescriptionItems() { return prescriptionItems; }
     public List<Map<String, Object>> getAttachments() { return attachments; }
+    public Map<String, Object> getAiExtracted() { return aiExtracted; }
+    public void setAiExtracted(Map<String, Object> aiExtracted) { this.aiExtracted = aiExtracted; }
     public Instant getRecordDate() { return recordDate; }
     public MedicalRecordStatus getStatus() { return status; }
     public Long getVersion() { return version; }

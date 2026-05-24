@@ -14,7 +14,8 @@ export const API_ROUTES = {
   configs: '/api/v1/configs',
   patients: '/api/v1/patients',
   receptions: '/api/v1/receptions',
-  departments: '/api/v1/departments'
+  departments: '/api/v1/departments',
+  aiVisionParseMedicalRecord: '/api/v1/ai/vision/parse-medical-record'
 } as const;
 
 export type LoginPayload = { username: string; password: string };
@@ -59,6 +60,43 @@ export type StatusChangeRequest<R extends StatusManagedRoute = StatusManagedRout
 
 export type ApiResponse<T> = { success: boolean; message?: string; data: T };
 export type ApiErrorResponse = { message?: string; errorCode?: string; details?: string[]; traceId?: string };
+
+/**
+ * Structured fields extracted from a medical-record image by the AI vision
+ * service. Mirrors {@code com.hospital.ai.vision.MedicalRecordFields}. All
+ * keys are nullable — the medic decides which suggestions to accept.
+ */
+export type MedicalRecordFields = {
+  patientName: string | null;
+  gender: string | null;
+  age: number | null;
+  visitDate: string | null;
+  department: string | null;
+  chiefComplaint: string | null;
+  presentIllness: string | null;
+  diagnosis: string | null;
+  prescription: string | null;
+  doctor: string | null;
+};
+
+/**
+ * Response from POST /api/v1/ai/vision/parse-medical-record. {@code rawJson}
+ * is the model's full payload (kept for debugging); UI primarily uses
+ * {@code fields} and the token/latency stats so the medic sees the cost.
+ */
+export type AiVisionResponse = {
+  rawJson: Record<string, unknown>;
+  fields: MedicalRecordFields;
+  confidence: number;
+  tokensIn: number;
+  tokensOut: number;
+  latencyMs: number;
+  extractionHistoryId: number;
+};
+
+export type AiVisionRequest =
+  | { photoId: string; prompt?: string }
+  | { base64: string; contentType: string; prompt?: string };
 
 export const errorCodeMessages: Record<string, string> = {
   VALIDATION_ERROR: 'Invalid request payload',

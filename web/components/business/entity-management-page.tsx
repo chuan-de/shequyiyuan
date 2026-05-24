@@ -12,6 +12,18 @@ import {
 import { hasPermission } from '@/lib/permissions';
 import { useRouter } from 'next/navigation';
 
+/** Extra wiring handed to {@link EntityFormField.customRender}. */
+export type CustomFieldContext = {
+  /** Read another field's current value from the surrounding form. */
+  getFormValue: (key: string) => string;
+  /** Patch any field in the surrounding form (used by the AI suggestion panel). */
+  setFormValue: (key: string, value: string) => void;
+  /** Batch patch — applies multiple fields atomically in one re-render. */
+  patchForm: (patch: Record<string, string>) => void;
+  /** Current user's permissions, so the custom renderer can gate UI elements. */
+  permissions: string[];
+};
+
 export type EntityFormField = {
   key: string;
   label: string;
@@ -20,7 +32,7 @@ export type EntityFormField = {
   defaultValue?: string;
   type?: 'text' | 'password' | 'textarea' | 'number' | 'select' | 'photo' | 'datetime' | 'custom';
   options?: { value: string; label: string }[];
-  customRender?: (value: string, onChange: (next: string) => void, mode: 'create' | 'edit') => React.ReactNode;
+  customRender?: (value: string, onChange: (next: string) => void, mode: 'create' | 'edit', ctx: CustomFieldContext) => React.ReactNode;
 };
 
 function isoToLocalInput(iso: string): string {
@@ -570,7 +582,17 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
                     onChange={e => setCreateForm(prev => ({ ...prev, [f.key]: e.target.value }))}
                   />
                 ) : f.type === 'custom' && f.customRender ? (
-                  f.customRender(createForm[f.key] ?? '', (next) => setCreateForm(prev => ({ ...prev, [f.key]: next })), 'create')
+                  f.customRender(
+                    createForm[f.key] ?? '',
+                    (next) => setCreateForm(prev => ({ ...prev, [f.key]: next })),
+                    'create',
+                    {
+                      getFormValue: (k) => createForm[k] ?? '',
+                      setFormValue: (k, v) => setCreateForm(prev => ({ ...prev, [k]: v })),
+                      patchForm: (patch) => setCreateForm(prev => ({ ...prev, ...patch })),
+                      permissions,
+                    }
+                  )
                 ) : (
                   <Input
                     type={f.type === 'password' ? 'password' : f.type === 'number' ? 'number' : 'text'}
@@ -634,7 +656,17 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
                       onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))}
                     />
                   ) : f.type === 'custom' && f.customRender ? (
-                    f.customRender(editForm[f.key] ?? '', (next) => setEditForm(prev => ({ ...prev, [f.key]: next })), 'edit')
+                    f.customRender(
+                      editForm[f.key] ?? '',
+                      (next) => setEditForm(prev => ({ ...prev, [f.key]: next })),
+                      'edit',
+                      {
+                        getFormValue: (k) => editForm[k] ?? '',
+                        setFormValue: (k, v) => setEditForm(prev => ({ ...prev, [k]: v })),
+                        patchForm: (patch) => setEditForm(prev => ({ ...prev, ...patch })),
+                        permissions,
+                      }
+                    )
                   ) : (
                     <Input
                       type={f.type === 'number' ? 'number' : 'text'}
