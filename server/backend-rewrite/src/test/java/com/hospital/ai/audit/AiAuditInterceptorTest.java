@@ -147,7 +147,14 @@ class AiAuditInterceptorTest {
         final List<Failure> failureCalls = new ArrayList<>();
         final List<RateLimited> rateLimitedCalls = new ArrayList<>();
 
-        RecordingAuditService() { super(null); }
+        RecordingAuditService() {
+            super(null, new org.springframework.beans.factory.ObjectProvider<>() {
+                @Override public io.micrometer.core.instrument.MeterRegistry getObject() { return null; }
+                @Override public io.micrometer.core.instrument.MeterRegistry getObject(Object... args) { return null; }
+                @Override public io.micrometer.core.instrument.MeterRegistry getIfAvailable() { return null; }
+                @Override public io.micrometer.core.instrument.MeterRegistry getIfUnique() { return null; }
+            });
+        }
 
         @Override public AiAuditLog recordSuccess(Long userId, ChatRequest req, ChatResponse resp) {
             successCalls.add(new Success(userId, req, resp));

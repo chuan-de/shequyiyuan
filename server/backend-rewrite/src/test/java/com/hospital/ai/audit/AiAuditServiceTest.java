@@ -25,7 +25,12 @@ class AiAuditServiceTest {
     @Test
     void recordSuccess_truncatesPromptAndResponseTo500CharsWithMarker() {
         RecordingRepo repo = new RecordingRepo();
-        AiAuditService svc = new AiAuditService(repo);
+        AiAuditService svc = new AiAuditService(repo, new org.springframework.beans.factory.ObjectProvider<>() {
+            @Override public io.micrometer.core.instrument.MeterRegistry getObject() { return null; }
+            @Override public io.micrometer.core.instrument.MeterRegistry getObject(Object... args) { return null; }
+            @Override public io.micrometer.core.instrument.MeterRegistry getIfAvailable() { return null; }
+            @Override public io.micrometer.core.instrument.MeterRegistry getIfUnique() { return null; }
+        });
 
         String hugePrompt = "p".repeat(2000);
         String hugeResp = "r".repeat(2000);
@@ -55,7 +60,12 @@ class AiAuditServiceTest {
     @Test
     void recordFailure_capturesErrorMessageAndStatus() {
         RecordingRepo repo = new RecordingRepo();
-        AiAuditService svc = new AiAuditService(repo);
+        AiAuditService svc = new AiAuditService(repo, new org.springframework.beans.factory.ObjectProvider<>() {
+            @Override public io.micrometer.core.instrument.MeterRegistry getObject() { return null; }
+            @Override public io.micrometer.core.instrument.MeterRegistry getObject(Object... args) { return null; }
+            @Override public io.micrometer.core.instrument.MeterRegistry getIfAvailable() { return null; }
+            @Override public io.micrometer.core.instrument.MeterRegistry getIfUnique() { return null; }
+        });
 
         ChatRequest req = ChatRequest.builder()
                 .feature("vision")
@@ -74,7 +84,12 @@ class AiAuditServiceTest {
     @Test
     void recordRateLimited_marksRowWithoutCallingUpstream() {
         RecordingRepo repo = new RecordingRepo();
-        AiAuditService svc = new AiAuditService(repo);
+        AiAuditService svc = new AiAuditService(repo, new org.springframework.beans.factory.ObjectProvider<>() {
+            @Override public io.micrometer.core.instrument.MeterRegistry getObject() { return null; }
+            @Override public io.micrometer.core.instrument.MeterRegistry getObject(Object... args) { return null; }
+            @Override public io.micrometer.core.instrument.MeterRegistry getIfAvailable() { return null; }
+            @Override public io.micrometer.core.instrument.MeterRegistry getIfUnique() { return null; }
+        });
 
         ChatRequest req = ChatRequest.builder()
                 .feature("patient-rag")

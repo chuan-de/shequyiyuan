@@ -5,6 +5,11 @@ import com.hospital.ai.client.ChatRequest;
 import com.hospital.ai.client.ChatResponse;
 import com.hospital.observability.TraceContext;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import java.time.Duration;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -23,9 +28,11 @@ public class AiAuditService {
     static final String RATE_LIMITED = "rate_limited";
 
     private final AiAuditLogRepository repository;
+    private final MeterRegistry meterRegistry;
 
-    public AiAuditService(AiAuditLogRepository repository) {
+    public AiAuditService(AiAuditLogRepository repository, ObjectProvider<MeterRegistry> meterRegistry) {
         this.repository = repository;
+        this.meterRegistry = meterRegistry.getIfAvailable();
     }
 
     /** Successful call: record tokens + latency + truncated content. */
@@ -38,7 +45,10 @@ public class AiAuditService {
         row.setTokensIn(response.tokensIn());
         row.setTokensOut(response.tokensOut());
         row.setLatencyMs((int) Math.min(Integer.MAX_VALUE, response.latencyMs()));
-        return repository.save(row);
+        AiAuditLog saved = repository.save(row);
+        emitMetrics(request.getFeature(), response.model(), SUCCESS, response.latencyMs(),
+                response.tokensIn(), response.tokensOut());
+        return saved;
     }
 
     /** Failed call (HTTP error, timeout, parse error, etc.). */
@@ -48,7 +58,9 @@ public class AiAuditService {
         row.setPromptExcerpt(truncate(extractPrompt(request)));
         row.setLatencyMs((int) Math.min(Integer.MAX_VALUE, latencyMs));
         row.setErrorMsg(truncate(error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage()));
-        return repository.save(row);
+        AiAuditLog saved = repository.save(row);
+        emitMetrics(request.getFeature(), request.getModel(), FAILED, latencyMs, null, null);
+        return saved;
     }
 
     /** Rejected by rate limiter — no upstream call was made. */
@@ -58,7 +70,34 @@ public class AiAuditService {
         row.setPromptExcerpt(truncate(extractPrompt(request)));
         row.setLatencyMs(0);
         row.setErrorMsg(truncate("rate_limit: " + reason));
-        return repository.save(row);
+        AiAuditLog saved = repository.save(row);
+        emitMetrics(request.getFeature(), request.getModel(), RATE_LIMITED, 0, null, null);
+        return saved;
+    }
+
+    private void emitMetrics(String feature, String model, String status, long latencyMs,
+                             Integer tokensIn, Integer tokensOut) {
+        if (meterRegistry == null) return;
+        String safeFeature = feature == null ? "unknown" : feature;
+        String safeModel = model == null ? "unknown" : model;
+        Counter.builder("hospital_ai_calls_total")
+                .tag("feature", safeFeature).tag("model", safeModel).tag("status", status)
+                .register(meterRegistry).increment();
+        if (SUCCESS.equals(status)) {
+            Timer.builder("hospital_ai_latency_seconds")
+                    .tag("feature", safeFeature).tag("model", safeModel)
+                    .register(meterRegistry).record(Duration.ofMillis(latencyMs));
+        }
+        if (tokensIn != null && tokensIn > 0) {
+            Counter.builder("hospital_ai_tokens_total")
+                    .tag("feature", safeFeature).tag("model", safeModel).tag("direction", "in")
+                    .register(meterRegistry).increment(tokensIn);
+        }
+        if (tokensOut != null && tokensOut > 0) {
+            Counter.builder("hospital_ai_tokens_total")
+                    .tag("feature", safeFeature).tag("model", safeModel).tag("direction", "out")
+                    .register(meterRegistry).increment(tokensOut);
+        }
     }
 
     private AiAuditLog baseRow(Long userId, ChatRequest request) {
