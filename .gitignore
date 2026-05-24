@@ -21,3 +21,13 @@ yarn-error.log*
 pnpm-debug.log*
 
 .claude/**
+
+# Local secrets (API keys, tokens) — never commit
+/key
+*.key
+.env
+.env.*
+
+# Local test fixtures with real patient data — never commit
+/testbingli.jpg
+scripts/test_*.out.md
