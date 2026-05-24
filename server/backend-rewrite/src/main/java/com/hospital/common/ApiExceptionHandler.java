@@ -43,7 +43,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(AiConsentRequiredException.class)
     public ResponseEntity<Map<String, Object>> handleAiConsentRequired(AiConsentRequiredException ex) {
-        return ResponseEntity.status(HttpStatus.PRECONDITION_REQUIRED)
+        // 412 PRECONDITION_FAILED (not 428 PRECONDITION_REQUIRED): the frontend
+        // explicitly checks for 412 in api.ts#askPatientAi to pop the consent
+        // modal. PRECONDITION_FAILED is the closer semantic match — the
+        // precondition (patient consent) was not satisfied.
+        return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED)
             .body(Map.of(
                 "code", AiConsentRequiredException.ERROR_CODE,
                 "message", ex.getMessage()
