@@ -1,6 +1,15 @@
 spring:
   application:
     name: hospital-backend-rewrite
+  # Spring AI 1.0 starter is on the classpath but Phase 0 does NOT use its
+  # auto-wired ChatModel / EmbeddingModel beans — we own the HTTP call via
+  # AiCallTemplate (forces temperature=1, custom retry, audit-friendly). These
+  # flags disable the model auto-config so a missing OPENAI key never breaks
+  # boot. Phase 2 will revisit if/when we adopt Spring AI's VectorStore.
+  ai:
+    model:
+      chat: none
+      embedding: none
   datasource:
     url: jdbc:postgresql://localhost:5432/hospital
     username: hospital
@@ -30,3 +39,26 @@ management:
 
 server:
   port: 8089
+
+# AI features (Phase 0 — infrastructure only).
+# The provider is Volcengine Ark (Doubao) via OpenAI-compatible endpoint.
+# API key MUST be supplied via env HOSPITAL_AI_API_KEY (never commit a real key).
+# Toggle hospital.ai.enabled=false in environments without an API key to skip
+# the AI bean graph entirely so the rest of the app stays healthy.
+hospital:
+  ai:
+    enabled: true
+    provider: doubao
+    base-url: https://ark.cn-beijing.volces.com/api/v3
+    api-key: ${HOSPITAL_AI_API_KEY:}
+    chat-model: doubao-seed-2.0-lite
+    embedding-model: doubao-embedding-text-240715
+    vision-model: doubao-seed-2.0-lite
+    timeout-seconds: 60
+    features:
+      vision: true
+      patient-rag: true
+      consult: true
+    rate-limit:
+      per-user-qpm: 10
+      daily-token-budget: 100000

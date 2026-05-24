@@ -11,3 +11,10 @@ security:
   jwt:
     secret: test-secret-key-test-secret-key-32bytes
     access-token-ttl: 1h
+
+# AI infrastructure stays off in tests — no real API key, no real upstream.
+# Individual tests can override hospital.ai.enabled=true via @TestPropertySource.
+hospital:
+  ai:
+    enabled: false
+    api-key: ""
