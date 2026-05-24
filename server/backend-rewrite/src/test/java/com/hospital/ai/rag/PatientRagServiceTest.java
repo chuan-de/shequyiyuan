@@ -19,12 +19,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * Unit tests for PatientRagService prompt assembly + the role / row-level
- * authorisation rules. The DB-touching paths (retrieve / loadPatient) are
- * exercised in the integration test against pgvector.
+ * authorisation rules. The retrieval path now goes through PatientKnowledgeStore
+ * (Qdrant) — exercised separately in PatientKnowledgeStoreTest with a mocked
+ * QdrantClient.
  */
 class PatientRagServiceTest {
 
-    private final PatientRagService svc = new PatientRagService(null, null, null, null, null);
+    private final PatientRagService svc = new PatientRagService(null, null, null, null, null, null);
 
     @AfterEach
     void clearAuth() {

@@ -80,3 +80,14 @@ hospital:
     rate-limit:
       per-user-qpm: 10
       daily-token-budget: 100000
+  # Qdrant vector store (Phase 2 RAG). Created automatically at boot if the
+  # collection does not yet exist — see com.hospital.ai.qdrant.QdrantBootstrap.
+  # vector-size MUST equal hospital.ai.embedding-dimension.
+  qdrant:
+    host: localhost
+    port: 6334            # gRPC; REST is 6333 (handy for curl, not used here)
+    use-tls: false
+    api-key: ${HOSPITAL_QDRANT_API_KEY:}   # empty for local; required in prod
+    collection: patient_knowledge
+    vector-size: 2048
+    distance: Cosine

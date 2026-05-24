@@ -22,7 +22,18 @@
 ## 二、部署前置
 
 ### 数据库镜像
-**必须**使用 `pgvector/pgvector:pg16`（已预装 pgvector 扩展）。`docker-compose.yml` 已配置；自建环境请确认。
+继续使用 `pgvector/pgvector:pg16`（结构表 + 审计表）。Phase 2 的 RAG 向量已迁出 pgvector，改存 Qdrant，但 pgvector 扩展保留作未来非 AI 用途。
+
+### Qdrant（Phase 2 RAG 向量存储）
+RAG 切片向量存在独立的 Qdrant 服务（gRPC 端口 6334，REST 端口 6333）：
+
+```bash
+docker compose up -d qdrant
+```
+
+`hospital.qdrant.collection`（默认 `patient_knowledge`）在启动时自动创建（`QdrantBootstrap`），collection 已存在则跳过。如果 embedding 维度有变需手动 `DELETE /collections/patient_knowledge` 并重启。
+
+生产环境请通过 `HOSPITAL_QDRANT_API_KEY` 环境变量提供 API key；`hospital.qdrant.use-tls=true` 启用 TLS。
 
 ### 环境变量
 在所有运行环境（开发/测试/生产）设置：
@@ -150,6 +161,9 @@ hospital:
 | 嵌入队列堆积 | 异步事件处理慢 | 查 `ai_dead_letter` 表；用 `POST /api/v1/ai/admin/backfill?dryRun=true` 预估 |
 | SSE 流式被截断 | Nginx 缓冲 | 确认上游已设 `proxy_buffering off` + 后端 `X-Accel-Buffering: no` 已生效 |
 | 启动时 V40 报 `extension "vector" does not exist` | 用了非 pgvector 镜像 | 切到 `pgvector/pgvector:pg16` |
+| 启动日志 `Qdrant bootstrap failed` | Qdrant 容器未起 / 网络不通 | `docker compose up -d qdrant`；检查 `hospital.qdrant.host/port` |
+| `flyway_schema_history` 里 V44 success=false | V44 历史失败（pgvector HNSW 2000 维上限） | `DELETE FROM flyway_schema_history WHERE version='44' AND success=false;` 然后重启，V44 会作为 no-op 重跑，V45 接着 drop 旧表 |
+| 患者 RAG 调用报 `Qdrant search failed` / `Qdrant upsert failed` | Qdrant 不可达或 collection 不存在 | 确认 `docker ps` 里有 qdrant；查 `/dashboard` 看 collection；必要时删了重启自动重建 |
 
 ### 历史数据回填
 启用 RAG 后，历史病历/档案/就诊默认**不会**自动嵌入。需触发回填：
@@ -189,10 +203,12 @@ curl -X POST 'http://host/api/v1/ai/admin/backfill?dryRun=false' \
 | V37 | AI 权限码 + 角色分配 |
 | V38 | `ai_audit_log` 表 |
 | V39 | `medical_record.ai_extracted` + `ai_extraction_history` |
-| V40 | pgvector 扩展 |
-| V41 | `patient_knowledge_chunk` + HNSW 索引 |
+| V40 | pgvector 扩展（保留但已不存 AI 数据） |
+| V41 | `patient_knowledge_chunk` + HNSW 索引（**已废弃，被 V45 drop**） |
 | V42 | `patient_profile.ai_consent_at` + `ai_dead_letter` |
 | V43 | `ai_consult_session` + `ai_consult_message` |
+| V44 | no-op 占位（原 widen 到 2048 维失败，因 pgvector HNSW 上限 2000） |
+| V45 | drop `patient_knowledge_chunk`，向量存储迁至 Qdrant |
 
 ---
 

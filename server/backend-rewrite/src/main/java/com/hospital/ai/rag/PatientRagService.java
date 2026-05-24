@@ -1,12 +1,11 @@
 package com.hospital.ai.rag;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.hospital.ai.audit.AiAuditLog;
@@ -18,7 +17,8 @@ import com.hospital.ai.client.ChatResponse;
 import com.hospital.ai.common.AiConsentRequiredException;
 import com.hospital.ai.config.AiProperties;
 import com.hospital.ai.embedding.EmbeddingService;
-import com.hospital.ai.ingestion.KnowledgeIngestionService;
+import com.hospital.ai.qdrant.PatientKnowledgeStore;
+import com.hospital.ai.qdrant.RetrievedChunk;
 import com.hospital.common.NotFoundException;
 import com.hospital.observability.TraceContext;
 
@@ -38,11 +38,11 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * Retrieval-Augmented Generation over a single patient's records.
  *
- * <p><b>Privacy fence (non-negotiable):</b> every retrieval query carries an
- * explicit {@code WHERE patient_id = :patientId} clause. Callers cannot
- * cross-pollute: the service does its own role + ownership check before
- * touching the embeddings, and the SQL is in this one class so a security
- * review only has to read these ~40 lines to confirm.</p>
+ * <p><b>Privacy fence (non-negotiable):</b> every retrieval query goes through
+ * {@link PatientKnowledgeStore#search} which applies a mandatory
+ * {@code match(patient_id, ?)} filter — there is no overload that bypasses it.
+ * Callers cannot cross-pollute: the service does its own role + ownership
+ * check before touching the embeddings.</p>
  *
  * <p>Flow per {@link #ask}:</p>
  * <ol>
@@ -51,8 +51,8 @@ import org.springframework.web.server.ResponseStatusException;
  *       {@code patient_profile.user_id}.</li>
  *   <li>Look up the patient row, refuse with 404 if missing and 412 (via
  *       {@link AiConsentRequiredException}) if {@code ai_consent_at} is null.</li>
- *   <li>Embed the question, retrieve top-K=5 chunks for THIS patient sorted
- *       by cosine distance ({@code <=>}).</li>
+ *   <li>Embed the question, retrieve top-K=5 chunks for THIS patient from
+ *       Qdrant (Cosine similarity).</li>
  *   <li>Render a Chinese system prompt + numbered citations and call
  *       {@link AiCallTemplate#chat}.</li>
  *   <li>Write an extra {@code ai_audit_log} row (feature
@@ -79,17 +79,20 @@ public class PatientRagService {
 
     private final JdbcClient jdbcClient;
     private final EmbeddingService embeddingService;
+    private final PatientKnowledgeStore knowledgeStore;
     private final AiCallTemplate aiCallTemplate;
     private final AiProperties properties;
     private final AiAuditLogRepository auditRepository;
 
     public PatientRagService(JdbcClient jdbcClient,
                              EmbeddingService embeddingService,
+                             PatientKnowledgeStore knowledgeStore,
                              AiCallTemplate aiCallTemplate,
                              AiProperties properties,
                              AiAuditLogRepository auditRepository) {
         this.jdbcClient = jdbcClient;
         this.embeddingService = embeddingService;
+        this.knowledgeStore = knowledgeStore;
         this.aiCallTemplate = aiCallTemplate;
         this.properties = properties;
         this.auditRepository = auditRepository;
@@ -190,48 +193,44 @@ public class PatientRagService {
 
     // --- retrieval ---------------------------------------------------------
 
+    /**
+     * SECURITY: the {@code patientId} filter is enforced inside
+     * {@link PatientKnowledgeStore#search}; cross-patient leakage is
+     * impossible at this layer without modifying that one method.
+     */
     List<Citation> retrieve(Long patientId, float[] questionVector) {
-        // SECURITY: patient_id filter is mandatory — top-K alone is not enough.
-        // The `embedding <=> :vec::vector` operator returns cosine distance
-        // (lower = closer). similarity = 1 - distance gives the UI a
-        // friendlier 0..1 number.
-        String vectorLiteral = KnowledgeIngestionService.toPgVectorLiteral(questionVector);
-        return jdbcClient.sql("""
-                SELECT id, source_type, source_id, field_key, chunk_text,
-                       (embedding <=> CAST(:vec AS vector)) AS distance,
-                       metadata ->> 'source_created_at' AS source_created_at
-                FROM patient_knowledge_chunk
-                WHERE patient_id = :pid
-                ORDER BY embedding <=> CAST(:vec AS vector)
-                LIMIT :k
-                """)
-                .param("pid", patientId)
-                .param("vec", vectorLiteral)
-                .param("k", TOP_K)
-                .query(PatientRagService::mapCitation)
-                .list();
+        List<RetrievedChunk> hits = knowledgeStore.search(patientId, questionVector, TOP_K);
+        List<Citation> out = new ArrayList<>(hits.size());
+        // Synthetic chunk id surfaced to the UI — Qdrant's UUID point ids would
+        // be awkward to display. The retrieval audit log records the index
+        // alongside the (source_type, source_id, field_key) tuple so a privacy
+        // audit can still trace exact provenance.
+        for (int i = 0; i < hits.size(); i++) {
+            RetrievedChunk h = hits.get(i);
+            Map<String, Object> meta = h.metadata();
+            Instant date = parseInstant(meta == null ? null : meta.get("source_created_at"));
+            // Qdrant returns Cosine similarity in [-1, 1] (typically [0, 1] for
+            // normalised embeddings). Clamp negatives to 0 so the UI never
+            // shows a nonsense bar.
+            double similarity = Math.max(0.0, Math.min(1.0, h.score()));
+            out.add(new Citation(
+                    (long) (i + 1),
+                    h.sourceType(),
+                    h.sourceId(),
+                    h.fieldKey(),
+                    truncate(h.chunkText(), 280),
+                    date,
+                    similarity));
+        }
+        return out;
     }
 
-    private static Citation mapCitation(ResultSet rs, int rowNum) throws SQLException {
-        double distance = rs.getDouble("distance");
-        String srcDate = rs.getString("source_created_at");
-        Instant date = null;
-        if (srcDate != null) {
-            try { date = Instant.parse(srcDate); } catch (RuntimeException ignored) { /* leave null */ }
-        }
-        // Fall back to the createdAt-style column when metadata didn't carry it.
-        Timestamp ts = null;
-        try { ts = rs.getTimestamp("source_created_at"); } catch (SQLException ignored) { /* expected: column is text in our select */ }
-        if (date == null && ts != null) date = ts.toInstant();
-
-        return new Citation(
-                rs.getLong("id"),
-                rs.getString("source_type"),
-                rs.getLong("source_id"),
-                rs.getString("field_key"),
-                truncate(rs.getString("chunk_text"), 280),
-                date,
-                Math.max(0.0, 1.0 - distance));
+    private static Instant parseInstant(Object raw) {
+        if (raw == null) return null;
+        if (raw instanceof Instant inst) return inst;
+        String s = raw.toString();
+        if (s.isBlank()) return null;
+        try { return Instant.parse(s); } catch (RuntimeException ignored) { return null; }
     }
 
     // --- prompt assembly ---------------------------------------------------
@@ -275,10 +274,11 @@ public class PatientRagService {
     // --- audit -------------------------------------------------------------
 
     /**
-     * Extra audit row with the LIST of retrieved chunk ids. The chat call is
-     * already audited by {@code AiAuditInterceptor}; this row exists for the
-     * privacy review story — every retrieval is traceable to a patient + a
-     * specific set of chunks even when nobody actually called the LLM.
+     * Extra audit row with the LIST of retrieved chunk references. The chat
+     * call is already audited by {@code AiAuditInterceptor}; this row exists
+     * for the privacy review story — every retrieval is traceable to a
+     * patient + a specific set of chunks even when nobody actually called
+     * the LLM.
      */
     void recordRetrievalAudit(Long userId, String question, List<Citation> citations) {
         try {
@@ -287,10 +287,10 @@ public class PatientRagService {
             row.setFeature(FEATURE_RETRIEVAL);
             row.setModel(properties.getEmbeddingModel());
             row.setPromptExcerpt(truncate(question, 500));
-            String chunkIds = citations.stream()
-                    .map(c -> String.valueOf(c.chunkId()))
+            String refs = citations.stream()
+                    .map(c -> c.sourceType() + "#" + c.sourceId() + ":" + c.fieldKey())
                     .collect(Collectors.joining(","));
-            row.setResponseExcerpt(truncate("retrieved_chunk_ids=[" + chunkIds + "]", 500));
+            row.setResponseExcerpt(truncate("retrieved=[" + refs + "]", 500));
             row.setStatus("success");
             row.setLatencyMs(0);
             row.setTraceId(TraceContext.getTraceId());

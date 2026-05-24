@@ -16,7 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>{@code POST /api/v1/ai/admin/backfill?dryRun=true|false} — kicks off the
  * one-shot historical embedding job (see {@link KnowledgeBackfillJob}). Safe
  * to re-run because of the unique constraint on
- * {@code patient_knowledge_chunk}.</p>
+ * Qdrant collection {@code patient_knowledge} (configured via
+ * {@code hospital.qdrant.collection}).</p>
  *
  * <p>Gated by {@code ai:admin} permission AND the
  * {@code hospital.ai.features.patient-rag} flag — when the feature is off
@@ -35,6 +36,12 @@ public class AiAdminController {
         this.backfillJob = backfillJob;
     }
 
+    /**
+     * Kick off the one-shot historical embedding job (see
+     * {@link KnowledgeBackfillJob}). Idempotent — Qdrant point ids are
+     * derived from {@code (source_type, source_id, field_key)} so re-runs
+     * overwrite existing points instead of duplicating.
+     */
     @PostMapping("/backfill")
     @PreAuthorize("hasAuthority('ai:admin')")
     public ApiResponse<BackfillReportDto> backfill(

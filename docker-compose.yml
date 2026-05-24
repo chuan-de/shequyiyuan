@@ -1,8 +1,10 @@
 services:
   postgres:
-    # pgvector/pgvector:pg16 is the official pgvector image on PostgreSQL 16.
-    # Phase 2 (patient RAG) requires the `vector` extension — see Flyway V40.
-    # Data volume format is compatible with the prior plain postgres image.
+    # pgvector/pgvector:pg16 image is kept for now: the `vector` extension is
+    # still installed (V40 enables it) but the actual Phase 2 RAG vectors moved
+    # to Qdrant in V45. Keeping pgvector around is essentially free and leaves
+    # the door open for non-AI uses later. A plain postgres:16 image would
+    # also work, but switching requires a one-shot V46 to drop the extension.
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: hospital
@@ -10,6 +12,21 @@ services:
       POSTGRES_PASSWORD: hospital
     ports:
       - "5432:5432"
+    volumes:
+      - hospital_pgdata:/var/lib/postgresql/data
+
+  qdrant:
+    # Vector store for the Phase 2 patient RAG pipeline. doubao-embedding-vision
+    # returns 2048-dim vectors which pgvector's HNSW cannot index (2000 cap),
+    # so we offload vector storage + ANN search to Qdrant. REST on 6333 (handy
+    # for curl); the Java SDK talks gRPC on 6334.
+    image: qdrant/qdrant:v1.12.4
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - hospital_qdrant_data:/qdrant/storage
 
 volumes:
   hospital_pgdata:
+  hospital_qdrant_data:

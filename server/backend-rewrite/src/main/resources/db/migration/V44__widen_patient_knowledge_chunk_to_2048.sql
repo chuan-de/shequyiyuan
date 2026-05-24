@@ -1,24 +1,18 @@
--- Phase 2 (post-launch fix): widen embedding to 2048 dims.
+-- Phase 2 (post-launch fix) — superseded by V45.
 --
--- doubao-embedding-text-240715 (1024 dims) is not whitelisted on Volcano's
--- agentPlan tier; the only embedding model available there is
--- doubao-embedding-vision-250615, which returns 2048-float vectors. V41
--- baked 1024 into the column, so every ingest failed with
--- "Embedding dimension mismatch".
+-- Originally tried to widen patient_knowledge_chunk.embedding to vector(2048)
+-- so doubao-embedding-vision-250615 (2048-dim) would fit. That failed
+-- because pgvector's HNSW index caps the vector type at 2000 dimensions,
+-- which left this migration in success=false on any DB that picked it up.
 --
--- Table is empty in practice (ingestion has been crashing since the model
--- swap), so this is a cheap DROP-and-recreate of the column + index. If you
--- ever run this against a populated table you'll lose embeddings (chunks
--- can be re-embedded via the admin backfill endpoint).
+-- Rather than work around the HNSW limit, the whole table was dropped by
+-- V45 in favour of Qdrant (see com.hospital.ai.qdrant). This file is kept
+-- as a no-op marker so the version history is monotonic and existing
+-- environments that recorded V44 as failed can be repaired (flyway repair)
+-- and re-run cleanly.
 --
--- HNSW indexes must be rebuilt because the vector type changes. Cosine
--- distance opclass is unchanged.
+-- If you are seeing V44 with success=false in flyway_schema_history, run:
+--     DELETE FROM flyway_schema_history WHERE version='44' AND success=false;
+-- then restart the app; V44 will re-run as this no-op and V45 will follow.
 
-DROP INDEX IF EXISTS idx_pkc_embedding_hnsw;
-
-ALTER TABLE patient_knowledge_chunk
-    ALTER COLUMN embedding TYPE VECTOR(2048);
-
-CREATE INDEX IF NOT EXISTS idx_pkc_embedding_hnsw
-    ON patient_knowledge_chunk USING hnsw (embedding vector_cosine_ops)
-    WITH (m = 16, ef_construction = 64);
+SELECT 1;

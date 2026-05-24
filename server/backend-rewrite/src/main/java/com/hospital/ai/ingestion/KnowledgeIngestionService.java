@@ -8,6 +8,7 @@ import java.util.Map;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hospital.ai.embedding.EmbeddingService;
+import com.hospital.ai.qdrant.PatientKnowledgeStore;
 import com.hospital.healthrecord.domain.HealthRecord;
 import com.hospital.healthrecord.repository.HealthRecordRepository;
 import com.hospital.medicalrecord.domain.MedicalRecord;
@@ -25,18 +26,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Coordinates the embedding pipeline for one source row at a time:
- * load entity → chunk → embed → upsert into {@code patient_knowledge_chunk}.
+ * load entity → chunk → embed → batch-upsert into Qdrant (collection
+ * {@code patient_knowledge}).
  *
  * <p>Failures are captured in {@code ai_dead_letter} (per source row, with a
  * retry counter) so a transient embedding outage doesn't lose work. Re-runs
- * are safe thanks to the {@code (source_type, source_id, field_key)} unique
- * constraint — we use {@code ON CONFLICT DO UPDATE} to refresh the
- * embedding when the source field changes.</p>
+ * are safe thanks to the deterministic Qdrant point id derived from
+ * {@code (source_type, source_id, field_key)} — upsert overwrites the
+ * existing point when the source field changes.</p>
  *
  * <p>Each public {@code ingest*} method runs in its OWN transaction
- * ({@code REQUIRES_NEW}). The {@code @TransactionalEventListener(AFTER_COMMIT)}
- * already runs outside the publishing transaction, but making it explicit
- * keeps the backfill admin endpoint safe to call from a controller too.</p>
+ * ({@code REQUIRES_NEW}). Qdrant writes themselves are NOT in the DB
+ * transaction — they happen after the embed call and are not rolled back if
+ * the surrounding transaction fails. Idempotency makes a retry safe.</p>
  */
 @Service
 @ConditionalOnProperty(prefix = "hospital.ai",
@@ -54,6 +56,7 @@ public class KnowledgeIngestionService {
     private final HealthRecordChunker healthRecordChunker;
     private final VisitRecordChunker visitRecordChunker;
     private final EmbeddingService embeddingService;
+    private final PatientKnowledgeStore knowledgeStore;
     private final JdbcClient jdbcClient;
     private final ObjectMapper objectMapper;
 
@@ -64,6 +67,7 @@ public class KnowledgeIngestionService {
                                      HealthRecordChunker healthRecordChunker,
                                      VisitRecordChunker visitRecordChunker,
                                      EmbeddingService embeddingService,
+                                     PatientKnowledgeStore knowledgeStore,
                                      JdbcClient jdbcClient,
                                      ObjectMapper objectMapper) {
         this.medicalRecordRepository = medicalRecordRepository;
@@ -73,6 +77,7 @@ public class KnowledgeIngestionService {
         this.healthRecordChunker = healthRecordChunker;
         this.visitRecordChunker = visitRecordChunker;
         this.embeddingService = embeddingService;
+        this.knowledgeStore = knowledgeStore;
         this.jdbcClient = jdbcClient;
         this.objectMapper = objectMapper;
     }
@@ -134,46 +139,16 @@ public class KnowledgeIngestionService {
                     + chunks.size() + " vectors=" + vectors.size());
         }
 
-        for (int i = 0; i < chunks.size(); i++) {
-            upsert(chunks.get(i), vectors.get(i));
+        try {
+            knowledgeStore.upsert(chunks, vectors);
+        } catch (RuntimeException ex) {
+            log.warn("Qdrant upsert failed for {}#{}: {}", sourceType, sourceId, ex.toString());
+            recordDeadLetter("upsert", sourceType, sourceId, patientId,
+                    Map.of("chunk_count", chunks.size()),
+                    ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());
+            throw ex;
         }
         return IngestionOutcome.processed(chunks.size(), embedded.totalTokens());
-    }
-
-    private void upsert(KnowledgeChunk chunk, float[] vector) {
-        String metadataJson = toJson(chunk.metadata());
-        String vectorLiteral = toPgVectorLiteral(vector);
-        jdbcClient.sql("""
-                INSERT INTO patient_knowledge_chunk
-                    (patient_id, source_type, source_id, field_key, chunk_text, embedding, metadata)
-                VALUES (:pid, :stype, :sid, :fkey, :text, CAST(:vec AS vector), CAST(:meta AS jsonb))
-                ON CONFLICT (source_type, source_id, field_key)
-                DO UPDATE SET
-                    chunk_text = EXCLUDED.chunk_text,
-                    embedding  = EXCLUDED.embedding,
-                    metadata   = EXCLUDED.metadata,
-                    patient_id = EXCLUDED.patient_id
-                """)
-                .param("pid", chunk.patientId())
-                .param("stype", chunk.sourceType())
-                .param("sid", chunk.sourceId())
-                .param("fkey", chunk.fieldKey())
-                .param("text", chunk.chunkText())
-                .param("vec", vectorLiteral)
-                .param("meta", metadataJson)
-                .update();
-    }
-
-    /** pgvector wire format: "[0.1,0.2,...]". */
-    public static String toPgVectorLiteral(float[] v) {
-        StringBuilder sb = new StringBuilder(v.length * 12);
-        sb.append('[');
-        for (int i = 0; i < v.length; i++) {
-            if (i > 0) sb.append(',');
-            sb.append(v[i]);
-        }
-        sb.append(']');
-        return sb.toString();
     }
 
     String toJson(Map<String, Object> m) {

@@ -3,7 +3,7 @@ package com.hospital.ai.ingestion;
 /**
  * Application event signalling that a source row (medical_record /
  * health_record / visit) has been written or updated and should be
- * re-embedded into {@code patient_knowledge_chunk}.
+ * re-embedded into the {@code patient_knowledge} Qdrant collection.
  *
  * <p>Published from business services AFTER the writing transaction commits
  * (via {@code ApplicationEventPublisher}). The listener

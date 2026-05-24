@@ -102,6 +102,37 @@
             <version>${bucket4j.version}</version>
         </dependency>
 
+        <!-- Qdrant vector DB client (Phase 2 storage migration from pgvector).
+             The official jar declares grpc-* / netty-shaded as runtime-only,
+             so we add compile-scope deps for the API types we actually
+             reference (ManagedChannel, ListenableFuture, GeneratedMessageV3). -->
+        <dependency>
+            <groupId>io.qdrant</groupId>
+            <artifactId>client</artifactId>
+            <version>1.14.1</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf</artifactId>
+            <version>1.65.1</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+            <version>1.65.1</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+            <version>1.65.1</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>33.2.1-jre</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -135,6 +166,19 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Surefire JVM args: net.bytebuddy.experimental=true allows
+                 Mockito to mock final classes (e.g. QdrantClient from the
+                 official io.qdrant:client SDK) when the surefire JVM happens
+                 to be newer than ByteBuddy's officially supported Java
+                 version. Without this flag the test JVM (Java 25 here)
+                 refuses to instrument the SDK class. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Dnet.bytebuddy.experimental=true</argLine>
+                </configuration>
             </plugin>
         </plugins>
     </build>

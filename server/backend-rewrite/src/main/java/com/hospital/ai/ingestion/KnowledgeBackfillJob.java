@@ -8,13 +8,14 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * One-shot historical backfill for {@code patient_knowledge_chunk}.
+ * One-shot historical backfill for the Qdrant {@code patient_knowledge}
+ * collection.
  *
  * <p>Walks every medical_record / health_record / visit_record id in ascending
  * order, batches of 50, with a 200ms inter-batch pause to avoid hammering
- * Doubao's rate limit. Re-runs are safe — the unique constraint on
- * {@code patient_knowledge_chunk(source_type, source_id, field_key)} plus
- * {@code ON CONFLICT DO UPDATE} make every chunk write idempotent.</p>
+ * Doubao's rate limit. Re-runs are safe — Qdrant point ids are derived
+ * deterministically from {@code (source_type, source_id, field_key)} so
+ * upsert overwrites existing points instead of creating duplicates.</p>
  *
  * <p>Triggered via {@code POST /api/v1/ai/admin/backfill?dryRun=true|false}
  * (see {@code AiAdminController}). Not on a cron — admins kick it off

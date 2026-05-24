@@ -84,17 +84,17 @@ Scripts live in `server/backend-rewrite/src/main/resources/db/migration/` as `V{
   - **L1** — base entity structure (`app_user`, `app_role`)
   - **L2** — RBAC structure (`app_permission`, `app_role_permission`)
   - **L3** — data patches / naming alignment (must run after L2)
-- Current versions: V1–V43. V4 was patched to a no-op; actual config-permission alignment is in V13. V37–V43 are AI module migrations (see `docs/ai-features-plan.md`).
+- Current versions: V1–V45. V4 and V44 are no-op markers; V13 holds the real config-permission alignment, V45 drops the obsolete `patient_knowledge_chunk` table after the storage move to Qdrant. V37–V45 are AI module migrations (see `docs/ai-features-plan.md`).
 
 ### AI Module (`com.hospital.ai.*`)
 
 Vision OCR + per-patient RAG + community chat, all via 火山引擎方舟 Doubao (OpenAI-compatible).
 
 - Requires env var `HOSPITAL_AI_API_KEY` at runtime. Without it, set `hospital.ai.enabled=false` to skip AI bean wiring.
-- **Requires `pgvector/pgvector:pg16` Postgres image** (NOT the vanilla `postgres:16`) — V40 enables the `vector` extension.
+- **Patient RAG vector storage uses Qdrant** (`qdrant/qdrant`, gRPC on 6334) — see `com.hospital.ai.qdrant.*`. `docker-compose up -d qdrant` brings it up; collection `patient_knowledge` is created automatically on boot. The pgvector image is still used for Postgres but only because the extension is installed; no AI data lives in Postgres anymore.
 - Single entry point for all upstream calls: `com.hospital.ai.client.AiCallTemplate.chat()` / `chatStream()`. **Always force `temperature=1`** (Volcano rejects other values). Audit + rate limit are applied via `AiAuditInterceptor` (unary) and inside `AiCallTemplate` (streaming).
 - Permission codes: `ai:vision`, `ai:patient-rag`, `ai:consult`, `ai:admin`.
-- Privacy: every `patient_knowledge_chunk` query MUST filter by `patient_id`. Patient RAG requires `patient_profile.ai_consent_at` (HTTP 412 otherwise).
+- Privacy: every Qdrant search goes through `PatientKnowledgeStore.search` which forces a `match(patient_id, ?)` MUST filter — there is no overload that bypasses it. Patient RAG also requires `patient_profile.ai_consent_at` (HTTP 412 otherwise).
 - Detailed plan: `docs/ai-features-plan.md`. User docs: `docs/ai-features.md`.
 
 ### Frontend Structure

@@ -3,10 +3,11 @@ package com.hospital.ai.ingestion;
 import java.util.Map;
 
 /**
- * One slice of patient knowledge ready for embedding + storage in
- * {@code patient_knowledge_chunk}. Produced by a {@link Chunker} per source
- * row. {@code metadata} ends up in the JSONB column verbatim so retrieval
- * can show provenance ({@code source_created_at}, {@code doctor_id},
+ * One slice of patient knowledge ready for embedding + storage in the
+ * Qdrant {@code patient_knowledge} collection. Produced by a {@link Chunker}
+ * per source row. {@code metadata} ends up flattened onto the Qdrant point
+ * payload (key-prefixed with {@code metadata.}) so retrieval can show
+ * provenance ({@code source_created_at}, {@code doctor_id},
  * {@code department}, etc.).
  */
 public record KnowledgeChunk(

@@ -231,6 +231,26 @@ API key 从环境变量 `HOSPITAL_AI_API_KEY` 读，**不入仓库**。本地开
 | PR-4 | Phase 2.8-2.11（RAG 查询 + UI） | ✅ 依赖 PR-3 |
 | PR-5 | Phase 3（AI 问诊） | ✅ 依赖 PR-1 |
 | PR-6 | Phase 4（收尾） | ✅ 依赖前面所有 |
+| PR-7 | Storage migration: pgvector → Qdrant | ✅ 依赖 PR-3 |
+
+---
+
+### 7.x Storage migration: Qdrant（执行于 PR-7）
+
+V41 把切片向量直接存进 `patient_knowledge_chunk.embedding (VECTOR(1024))`。后来切换到 `doubao-embedding-vision-250615`（2048 维）触发 V44 尝试 widen 失败——pgvector HNSW 索引 cap 在 2000 维。与其用 halfvec 牺牲精度绕过，不如换专用向量库。
+
+**变更**：
+- 新增服务 `qdrant`（`docker-compose.yml`），gRPC 6334
+- 新增 SDK 依赖 `io.qdrant:client:1.14.1`
+- 新增包 `com.hospital.ai.qdrant.*`：`QdrantProperties` / `QdrantConfig` / `QdrantBootstrap`（启动幂等创建 collection）/ `PatientKnowledgeStore`（薄封装 upsert + 强制 `patient_id` 过滤的 search）/ `RetrievedChunk`
+- `KnowledgeIngestionService` 改为 batch upsert 到 Qdrant；死信路径不变
+- `PatientRagService.retrieve` 改调 `PatientKnowledgeStore.search`；API 出参完全兼容
+- Flyway V44 → no-op marker；V45 drop `patient_knowledge_chunk`
+- `DoubaoEmbeddingService` / `EmbeddingService` / chunkers / `RagAnswer` / `Citation` / 前端均不动
+
+**Point id 策略**：从 `(source_type, source_id, field_key)` SHA-256 取前 128 位组成 UUID，等价于原表 `uq_patient_knowledge_chunk_source` 唯一约束——同样的源 → 同样的 UUID → upsert 覆盖，回填可重复跑。
+
+**隐私围栏**：`PatientKnowledgeStore.search` 写死 `Filter.must(match(patient_id, ?))`，没有跳过该过滤的 overload；retrieval 审计行记录命中片段的 `(source_type, source_id, field_key)`。
 
 ---
 
