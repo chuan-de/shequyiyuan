@@ -3,8 +3,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { PhotoUploader } from '@/components/ui/file-upload';
 import {
-  changeEntityStatus, createEntity, currentUser, EntityRecord,
+  changeEntityStatus, createEntity, currentUser, deleteEntity, EntityRecord,
   getEntity, listEntities, updateEntity,
 } from '@/lib/api';
 import { hasPermission } from '@/lib/permissions';
@@ -16,15 +18,43 @@ export type EntityFormField = {
   required?: boolean;
   placeholder?: string;
   defaultValue?: string;
-  type?: 'text' | 'password' | 'textarea' | 'number' | 'select';
+  type?: 'text' | 'password' | 'textarea' | 'number' | 'select' | 'photo' | 'datetime' | 'custom';
   options?: { value: string; label: string }[];
+  customRender?: (value: string, onChange: (next: string) => void, mode: 'create' | 'edit') => React.ReactNode;
 };
+
+function isoToLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tz).toISOString().slice(0, 16);
+}
+function nowLocalInput(): string {
+  return isoToLocalInput(new Date().toISOString());
+}
 
 export type EntityColumn = {
   key: string;
   title: string;
   type?: 'text' | 'photo' | 'currency' | 'badge';
   render?: (row: EntityRecord) => React.ReactNode;
+};
+
+export type PromptOptions = {
+  title: string;
+  label?: string;
+  placeholder?: string;
+  type?: 'text' | 'password' | 'number';
+  initialValue?: string;
+  confirmText?: string;
+  validate?: (value: string) => string | null;
+};
+
+export type ActionHelpers = {
+  token: string;
+  reload: () => void;
+  showToast: (msg: string, type?: 'success' | 'error') => void;
+  prompt: (opts: PromptOptions) => Promise<string | null>;
 };
 
 export type EntityPageConfig = {
@@ -42,7 +72,7 @@ export type EntityPageConfig = {
     label: string;
     permission?: string;
     variant?: 'primary' | 'danger';
-    onClick: (row: EntityRecord, helpers: { token: string; reload: () => void; showToast: (msg: string, type?: 'success' | 'error') => void }) => void;
+    onClick: (row: EntityRecord, helpers: ActionHelpers) => void;
   }[];
   labelMap?: Record<string, string>;
 };
@@ -50,7 +80,21 @@ export type EntityPageConfig = {
 function initForm(fields: EntityFormField[], row?: EntityRecord | null): Record<string, string> {
   return fields.reduce<Record<string, string>>((acc, f) => {
     const v = row?.[f.key];
-    acc[f.key] = typeof v === 'string' ? v : (typeof v === 'number' ? String(v) : f.defaultValue ?? '');
+    if (f.type === 'datetime') {
+      if (typeof v === 'string' && v) acc[f.key] = isoToLocalInput(v);
+      else if (!row) acc[f.key] = nowLocalInput();
+      else acc[f.key] = '';
+    } else if (f.type === 'custom') {
+      if (v !== undefined && v !== null && typeof v !== 'string') {
+        acc[f.key] = JSON.stringify(v);
+      } else if (typeof v === 'string') {
+        acc[f.key] = v;
+      } else {
+        acc[f.key] = f.defaultValue ?? '';
+      }
+    } else {
+      acc[f.key] = typeof v === 'string' ? v : (typeof v === 'number' ? String(v) : f.defaultValue ?? '');
+    }
     return acc;
   }, {});
 }
@@ -97,7 +141,10 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
   const [loading, setLoading] = useState(false);
   const [canRead, setCanRead] = useState(false);
   const [canWrite, setCanWrite] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
+  const [confirmDelete, setConfirmDelete] = useState<{ ids: (number | string)[]; label: string } | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchParams, setSearchParams] = useState<Record<string, string>>({});
@@ -108,6 +155,34 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
   const [editing, setEditing] = useState<EntityRecord | null>(null);
   const [editForm, setEditForm] = useState<Record<string, string>>(() => initForm(config.formFields));
   const [detail, setDetail] = useState<EntityRecord | null>(null);
+
+  type PromptState = PromptOptions & { resolve: (v: string | null) => void };
+  const [promptState, setPromptState] = useState<PromptState | null>(null);
+  const [promptValue, setPromptValue] = useState('');
+  const [promptError, setPromptError] = useState('');
+
+  const openPrompt = useCallback((opts: PromptOptions): Promise<string | null> => {
+    return new Promise<string | null>(resolve => {
+      setPromptValue(opts.initialValue ?? '');
+      setPromptError('');
+      setPromptState({ ...opts, resolve });
+    });
+  }, []);
+
+  function closePrompt(value: string | null) {
+    if (!promptState) return;
+    promptState.resolve(value);
+    setPromptState(null);
+    setPromptValue('');
+    setPromptError('');
+  }
+
+  function confirmPrompt() {
+    if (!promptState) return;
+    const err = promptState.validate ? promptState.validate(promptValue) : null;
+    if (err) { setPromptError(err); return; }
+    closePrompt(promptValue);
+  }
 
   const statusKey = config.statusField ?? 'enabled';
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / size)), [total, size]);
@@ -140,13 +215,45 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
       .then(u => {
         setCanRead(hasPermission(u, `${config.permissionPrefix}:read`));
         setCanWrite(hasPermission(u, `${config.permissionPrefix}:write`));
+        setCanDelete(hasPermission(u, `${config.permissionPrefix}:delete`));
         setPermissions(u.permissions ?? []);
       })
-      .catch(() => router.replace('/login'));
+      .catch(() => { localStorage.removeItem('access_token'); localStorage.removeItem('token_type'); router.replace('/login'); });
   }, [router, config.permissionPrefix]);
 
   useEffect(() => { if (token && canRead) void load(); }, [token, canRead, load]);
   useEffect(() => { setCreateForm(initForm(config.formFields)); }, [config.formFields]);
+  useEffect(() => { setSelectedIds(new Set()); }, [rows]);
+
+  function toggleRow(id: number | string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (selectedIds.size === rows.length && rows.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(rows.map(r => r.id as number | string)));
+    }
+  }
+
+  async function runDelete(ids: (number | string)[]) {
+    const results = await Promise.allSettled(ids.map(id => deleteEntity(token, config.route, id)));
+    const failures = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[];
+    if (failures.length === 0) {
+      showToast(ids.length === 1 ? '删除成功' : `已删除 ${ids.length} 条`);
+    } else if (failures.length === ids.length) {
+      showToast(`删除失败：${failures[0].reason?.message ?? '请重试'}`, 'error');
+    } else {
+      showToast(`部分删除失败：成功 ${ids.length - failures.length} / 共 ${ids.length}`, 'error');
+    }
+    setConfirmDelete(null);
+    void load();
+  }
 
   function handleSearchChange(key: string, value: string) {
     if (searchDebounceTimer.current) clearTimeout(searchDebounceTimer.current);
@@ -231,15 +338,16 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
         <div className="mb-3 flex flex-wrap items-center gap-3">
           {config.searchFields.map(sf => (
             sf.type === 'select' ? (
-              <select
+              <Select
                 key={sf.key}
-                defaultValue=""
-                onChange={e => handleSearchChange(sf.key, e.target.value)}
-                className="input max-w-[160px]"
-              >
-                <option value="">{sf.label}（全部）</option>
-                {sf.options?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+                value={searchParams[sf.key] ?? ''}
+                onChange={(v) => handleSearchChange(sf.key, v)}
+                options={sf.options ?? []}
+                placeholder={`${sf.label}（全部）`}
+                allowEmpty
+                emptyLabel={`${sf.label}（全部）`}
+                className="max-w-[160px]"
+              />
             ) : (
               <Input
                 key={sf.key}
@@ -265,6 +373,15 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
             + 新建
           </Button>
         )}
+        {canDelete && selectedIds.size > 0 && (
+          <Button
+            variant="secondary"
+            onClick={() => setConfirmDelete({ ids: Array.from(selectedIds), label: `这 ${selectedIds.size} 条` })}
+            className="bg-rose-50 text-rose-600 ring-1 ring-rose-200 hover:bg-rose-100"
+          >
+            批量删除 ({selectedIds.size})
+          </Button>
+        )}
         <span className="ml-auto hint">共 {total} 条</span>
       </div>
 
@@ -273,6 +390,17 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
         <table className="w-full border-collapse">
           <thead className="border-b border-slate-200 bg-slate-50">
             <tr>
+              {canDelete && (
+                <th className="th w-10">
+                  <input
+                    type="checkbox"
+                    aria-label="全选"
+                    checked={rows.length > 0 && selectedIds.size === rows.length}
+                    onChange={toggleAll}
+                    className="h-4 w-4 cursor-pointer rounded border-slate-300"
+                  />
+                </th>
+              )}
               {config.columns.map(c => (
                 <th key={c.key} className="th">{c.title}</th>
               ))}
@@ -283,20 +411,31 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
           <tbody className="divide-y divide-slate-100">
             {loading && (
               <tr>
-                <td colSpan={config.columns.length + (config.statusField ? 2 : 1)} className="td text-center text-slate-400 py-12">
+                <td colSpan={config.columns.length + (config.statusField ? 2 : 1) + (canDelete ? 1 : 0)} className="td text-center text-slate-400 py-12">
                   加载中…
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={config.columns.length + (config.statusField ? 2 : 1)} className="td text-center text-slate-400 py-12">
+                <td colSpan={config.columns.length + (config.statusField ? 2 : 1) + (canDelete ? 1 : 0)} className="td text-center text-slate-400 py-12">
                   暂无数据
                 </td>
               </tr>
             )}
             {!loading && rows.map(row => (
               <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                {canDelete && (
+                  <td className="td">
+                    <input
+                      type="checkbox"
+                      aria-label={`选择 ${row.id}`}
+                      checked={selectedIds.has(row.id as number | string)}
+                      onChange={() => toggleRow(row.id as number | string)}
+                      className="h-4 w-4 cursor-pointer rounded border-slate-300"
+                    />
+                  </td>
+                )}
                 {config.columns.map(c => (
                   <td key={c.key} className="td">
                     {(() => {
@@ -351,13 +490,21 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
                       return (
                         <button
                           key={action.key}
-                          onClick={() => action.onClick(row, { token, reload: load, showToast })}
+                          onClick={() => action.onClick(row, { token, reload: load, showToast, prompt: openPrompt })}
                           className={`btn-ghost ${action.variant === 'danger' ? 'text-rose-500' : action.variant === 'primary' ? 'text-blue-500' : ''}`}
                         >
                           {action.label}
                         </button>
                       );
                     })}
+                    {canDelete && (
+                      <button
+                        onClick={() => setConfirmDelete({ ids: [row.id as number | string], label: '此条' })}
+                        className="btn-ghost text-rose-500"
+                      >
+                        删除
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -397,14 +544,12 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
                   {f.required && <span className="ml-0.5 text-rose-500">*</span>}
                 </label>
                 {f.type === 'select' ? (
-                  <select
+                  <Select
                     value={createForm[f.key] ?? ''}
-                    onChange={e => setCreateForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    className="input w-full"
-                  >
-                    <option value="">请选择</option>
-                    {f.options?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                    onChange={(v) => setCreateForm(prev => ({ ...prev, [f.key]: v }))}
+                    options={f.options ?? []}
+                    placeholder={f.placeholder ?? '请选择'}
+                  />
                 ) : f.type === 'textarea' ? (
                   <textarea
                     value={createForm[f.key] ?? ''}
@@ -413,6 +558,19 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
                     className="input w-full min-h-[80px]"
                     rows={3}
                   />
+                ) : f.type === 'photo' ? (
+                  <PhotoUploader
+                    value={createForm[f.key] ?? ''}
+                    onChange={url => setCreateForm(prev => ({ ...prev, [f.key]: url }))}
+                  />
+                ) : f.type === 'datetime' ? (
+                  <Input
+                    type="datetime-local"
+                    value={createForm[f.key] ?? ''}
+                    onChange={e => setCreateForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  />
+                ) : f.type === 'custom' && f.customRender ? (
+                  f.customRender(createForm[f.key] ?? '', (next) => setCreateForm(prev => ({ ...prev, [f.key]: next })), 'create')
                 ) : (
                   <Input
                     type={f.type === 'password' ? 'password' : f.type === 'number' ? 'number' : 'text'}
@@ -450,14 +608,12 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
                     {f.required && <span className="ml-0.5 text-rose-500">*</span>}
                   </label>
                   {f.type === 'select' ? (
-                    <select
+                    <Select
                       value={editForm[f.key] ?? ''}
-                      onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      className="input w-full"
-                    >
-                      <option value="">请选择</option>
-                      {f.options?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                      onChange={(v) => setEditForm(prev => ({ ...prev, [f.key]: v }))}
+                      options={f.options ?? []}
+                      placeholder={f.placeholder ?? '请选择'}
+                    />
                   ) : f.type === 'textarea' ? (
                     <textarea
                       value={editForm[f.key] ?? ''}
@@ -466,6 +622,19 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
                       className="input w-full min-h-[80px]"
                       rows={3}
                     />
+                  ) : f.type === 'photo' ? (
+                    <PhotoUploader
+                      value={editForm[f.key] ?? ''}
+                      onChange={url => setEditForm(prev => ({ ...prev, [f.key]: url }))}
+                    />
+                  ) : f.type === 'datetime' ? (
+                    <Input
+                      type="datetime-local"
+                      value={editForm[f.key] ?? ''}
+                      onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    />
+                  ) : f.type === 'custom' && f.customRender ? (
+                    f.customRender(editForm[f.key] ?? '', (next) => setEditForm(prev => ({ ...prev, [f.key]: next })), 'edit')
                   ) : (
                     <Input
                       type={f.type === 'number' ? 'number' : 'text'}
@@ -489,13 +658,70 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
           footer={<Button variant="secondary" onClick={() => setDetail(null)}>关闭</Button>}
         >
           <div className="space-y-3">
-            {Object.entries(detail).map(([k, v]) => (
-              <div key={k} className="flex gap-4">
-                <span className="w-36 flex-shrink-0 text-sm font-semibold text-slate-500">{config.labelMap?.[k] ?? k}</span>
-                <span className="text-sm text-slate-800 break-all">{String(v ?? '-')}</span>
-              </div>
-            ))}
+            {Object.entries(detail).map(([k, v]) => {
+              const isPhoto = typeof v === 'string' && /\/api\/v1\/photos\/[^/]+\/content/.test(v);
+              return (
+                <div key={k} className="flex gap-4">
+                  <span className="w-36 flex-shrink-0 text-sm font-semibold text-slate-500">{config.labelMap?.[k] ?? k}</span>
+                  {isPhoto ? (
+                    <img src={String(v)} alt="" className="h-20 w-20 rounded-lg border border-slate-200 object-cover" />
+                  ) : (
+                    <span className="text-sm text-slate-800 break-all">{String(v ?? '-')}</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
+        </Modal>
+      )}
+
+      {/* Prompt Modal (replaces window.prompt for rowActions) */}
+      {promptState && (
+        <Modal
+          title={promptState.title}
+          onClose={() => closePrompt(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => closePrompt(null)}>取消</Button>
+              <Button onClick={confirmPrompt}>{promptState.confirmText ?? '确认'}</Button>
+            </>
+          }
+        >
+          <div className="space-y-2">
+            {promptState.label && <label className="label">{promptState.label}</label>}
+            <Input
+              type={promptState.type ?? 'text'}
+              value={promptValue}
+              placeholder={promptState.placeholder ?? ''}
+              autoFocus
+              onChange={e => { setPromptValue(e.target.value); if (promptError) setPromptError(''); }}
+              onKeyDown={e => { if (e.key === 'Enter') confirmPrompt(); }}
+            />
+            {promptError && <p className="text-xs text-rose-600">{promptError}</p>}
+          </div>
+        </Modal>
+      )}
+
+      {/* Confirm Delete Modal */}
+      {confirmDelete && (
+        <Modal
+          title="确认删除"
+          onClose={() => setConfirmDelete(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setConfirmDelete(null)}>取消</Button>
+              <Button
+                onClick={() => runDelete(confirmDelete.ids)}
+                className="bg-rose-600 text-white hover:bg-rose-700"
+              >
+                确认删除
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm text-slate-700">
+            即将删除 <span className="font-semibold text-rose-600">{confirmDelete.label}</span>，此操作不可撤销，是否继续？
+          </p>
         </Modal>
       )}
     </AppShell>

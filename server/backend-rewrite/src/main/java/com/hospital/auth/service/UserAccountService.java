@@ -7,4 +7,7 @@ public interface UserAccountService {
     void setEnabled(long userId, boolean enabled);
 
     void resetPassword(long userId, String newPassword);
+
+    /** Deletes the app_user row; profile rows cascade via ON DELETE CASCADE FK. */
+    void deleteUser(long userId);
 }

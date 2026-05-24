@@ -28,24 +28,31 @@ public class HealthRecordController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('jiuankangdangan:read')")
+    @PreAuthorize("hasAnyAuthority('health-records:read', 'jiuankangdangan:read')")
     public ApiResponse<HealthRecord> detail(@PathVariable Long id) { return ApiResponse.ok(service.detail(id)); }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('jiuankangdangan:write')")
+    @PreAuthorize("hasAnyAuthority('health-records:write', 'jiuankangdangan:write')")
     public ApiResponse<HealthRecord> create(@RequestBody @Valid HealthRecordUpsertRequest request, Principal principal) {
         return ApiResponse.ok(service.create(request, principal == null ? "system" : principal.getName()));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('jiuankangdangan:write')")
+    @PreAuthorize("hasAnyAuthority('health-records:write', 'jiuankangdangan:write')")
     public ApiResponse<HealthRecord> update(@PathVariable Long id, @RequestBody @Valid HealthRecordUpsertRequest request, Principal principal) {
         return ApiResponse.ok(service.update(id, request, principal == null ? "system" : principal.getName()));
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAuthority('jiuankangdangan:status')")
+    @PreAuthorize("hasAnyAuthority('health-records:status', 'jiuankangdangan:status')")
     public ApiResponse<HealthRecord> status(@PathVariable Long id, @RequestBody @Valid HealthRecordStatusChangeRequest request, Principal principal) {
         return ApiResponse.ok(service.changeStatus(id, request.targetStatus(), principal == null ? "system" : principal.getName()));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('health-records:delete')")
+    public ApiResponse<Void> delete(@PathVariable Long id, Principal principal) {
+        service.delete(id, principal == null ? "system" : principal.getName());
+        return ApiResponse.ok(null);
     }
 }

@@ -7,6 +7,12 @@ web/pnpm-lock.yaml
 # Next.js build output
 web/.next/
 web/out/
+web/tsconfig.tsbuildinfo
+
+# Maven / Java build output
+target/
+**/target/
+*.class
 
 # Logs
 npm-debug.log*

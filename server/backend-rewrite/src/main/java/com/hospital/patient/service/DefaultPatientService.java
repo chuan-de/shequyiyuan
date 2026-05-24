@@ -126,6 +126,13 @@ public class DefaultPatientService implements PatientService {
         userAccountService.resetPassword(profile.getUserId(), newPassword);
     }
 
+    @Override
+    public void delete(Long id, String actor) {
+        PatientProfile profile = profileRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Patient not found"));
+        userAccountService.deleteUser(profile.getUserId());
+    }
+
     private PatientResponse mapRow(ResultSet rs, int rowNum) throws SQLException {
         Integer sexTypes = rs.getObject("sex_types") != null ? rs.getInt("sex_types") : null;
         return new PatientResponse(

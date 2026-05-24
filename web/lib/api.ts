@@ -17,11 +17,33 @@ async function parseError(response: Response): Promise<Error> {
   } catch { return new Error(text || `Request failed with status ${response.status}`); }
 }
 async function unwrapResponse<T>(response: Response): Promise<T> { if (!response.ok) throw await parseError(response); return (await response.json() as ApiResponse<T>).data; }
-async function apiFetch(route: string, init: RequestInit = {}): Promise<Response> { const headers = new Headers(init.headers); headers.set(TRACE_ID_HEADER, generateTraceId()); return fetch(`${API_BASE_URL}${route}`, { ...init, headers }); }
+
+export function applyAuthResponse(response: Response, requestUrl: string): void {
+  if (typeof window === 'undefined') return;
+  const refreshed = response.headers.get('X-Refreshed-Token');
+  if (refreshed) localStorage.setItem('access_token', refreshed);
+  if (response.status === 401 && !requestUrl.includes('/auth/login') && !requestUrl.includes('/auth/register')) {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('token_type');
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.assign('/login');
+    }
+  }
+}
+
+async function apiFetch(route: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  headers.set(TRACE_ID_HEADER, generateTraceId());
+  const url = `${API_BASE_URL}${route}`;
+  const response = await fetch(url, { ...init, headers });
+  applyAuthResponse(response, url);
+  return response;
+}
 const authHeader = (token: string) => ({ Authorization: `Bearer ${token}` });
-const statusChangeByRoute: { [R in StatusManagedRoute]: (enabled: boolean) => StatusChangeRequest<R> } = {
-  [API_ROUTES.doctors]: (enabled) => ({ targetStatus: enabled ? 'ACTIVE' : 'INACTIVE' }),
-  [API_ROUTES.familyDoctors]: (enabled) => ({ targetStatus: enabled ? 'ACTIVE' : 'SUSPENDED' }),
+// Doctor + FamilyDoctor backends switched to {enabled} (app_user.enabled toggle), so they
+// fall back to the default {enabled} payload below. Only routes that still use targetStatus
+// enums remain here.
+const statusChangeByRoute: Partial<{ [R in StatusManagedRoute]: (enabled: boolean) => StatusChangeRequest<R> }> = {
   [API_ROUTES.visits]: (enabled) => ({ targetStatus: enabled ? 'COMPLETED' : 'CANCELLED' }),
   [API_ROUTES.medications]: (enabled) => ({ targetStatus: enabled ? 'ENABLED' : 'DISABLED' }),
   [API_ROUTES.configs]: (enabled) => ({ targetStatus: enabled ? 'ENABLED' : 'DISABLED' }),
@@ -58,9 +80,11 @@ export async function listEntities(
 export async function getEntity(token: string, route: string, id: number): Promise<EntityRecord> { return unwrapResponse(await apiFetch(`${route}/${id}`, { headers: authHeader(token), cache:'no-store' })); }
 export async function createEntity(token: string, route: string, payload: Record<string, unknown>): Promise<void> { await unwrapResponse(await apiFetch(route,{method:'POST',headers:{...authHeader(token),'Content-Type':'application/json'},body:JSON.stringify(payload)})); }
 export async function updateEntity(token: string, route: string, id: number, payload: Record<string, unknown>): Promise<void> { await unwrapResponse(await apiFetch(`${route}/${id}`,{method:'PUT',headers:{...authHeader(token),'Content-Type':'application/json'},body:JSON.stringify(payload)})); }
+export async function deleteEntity(token: string, route: string, id: number | string): Promise<void> {
+  await unwrapResponse(await apiFetch(`${route}/${id}`, { method: 'DELETE', headers: authHeader(token) }));
+}
 export async function changeEntityStatus(token: string, route: string, id: number, enabled: boolean): Promise<void> {
-  const payload = route in statusChangeByRoute
-    ? statusChangeByRoute[route as StatusManagedRoute](enabled)
-    : ({ enabled } as Record<string, unknown>);
+  const mapper = statusChangeByRoute[route as StatusManagedRoute];
+  const payload = mapper ? mapper(enabled) : ({ enabled } as Record<string, unknown>);
   await unwrapResponse(await apiFetch(`${route}/${id}/status`,{method:'PATCH',headers:{...authHeader(token),'Content-Type':'application/json'},body:JSON.stringify(payload)}));
 }

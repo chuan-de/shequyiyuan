@@ -35,11 +35,16 @@ public class DefaultMedicalRecordService implements MedicalRecordService {
 
     @Override
     public MedicalRecord create(MedicalRecordUpsertRequest r, String actor) {
+        String caseNumber = (r.caseNumber() == null || r.caseNumber().isBlank())
+                ? generateCaseNumber()
+                : r.caseNumber();
         return repository.save(new MedicalRecord(null, r.doctorId(), r.doctorUuidNumber(), r.doctorName(),
                 r.doctorPhone(), r.doctorIdNumber(), r.doctorEmail(),
                 r.patientId(), r.patientName(), r.patientPhone(), r.patientIdNumber(), r.patientEmail(),
-                r.caseNumber(), r.caseName(), r.conditionDesc(),
-                r.examItems(), r.examResults(), MedicalRecordStatus.DRAFT, r.version()));
+                caseNumber, r.caseName(), r.conditionDesc(),
+                r.examItems(), r.examResults(),
+                r.prescriptionItems(), r.attachments(), r.recordDate(),
+                MedicalRecordStatus.DRAFT, r.version()));
     }
 
     @Override
@@ -48,8 +53,28 @@ public class DefaultMedicalRecordService implements MedicalRecordService {
         return repository.save(new MedicalRecord(c.getId(), r.doctorId(), r.doctorUuidNumber(), r.doctorName(),
                 r.doctorPhone(), r.doctorIdNumber(), r.doctorEmail(),
                 r.patientId(), r.patientName(), r.patientPhone(), r.patientIdNumber(), r.patientEmail(),
-                r.caseNumber(), r.caseName(), r.conditionDesc(),
-                r.examItems(), r.examResults(), c.getStatus(), c.getVersion()));
+                c.getCaseNumber(), r.caseName(), r.conditionDesc(),
+                r.examItems(), r.examResults(),
+                r.prescriptionItems(), r.attachments(), r.recordDate(),
+                c.getStatus(), c.getVersion()));
+    }
+
+    private String generateCaseNumber() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        String stamp = now.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        int suffix = (int) (Math.random() * 900 + 100);
+        for (int attempt = 0; attempt < 5; attempt++) {
+            String candidate = "BL" + stamp + suffix;
+            if (!repository.existsByCaseNumber(candidate)) return candidate;
+            suffix++;
+        }
+        throw new IllegalStateException("Failed to generate unique case number");
+    }
+
+    @Override
+    public void delete(Long id, String actor) {
+        if (!repository.existsById(id)) throw new NotFoundException("Medical record not found");
+        repository.deleteById(id);
     }
 
     @Override
@@ -59,6 +84,8 @@ public class DefaultMedicalRecordService implements MedicalRecordService {
                 c.getDoctorPhone(), c.getDoctorIdNumber(), c.getDoctorEmail(),
                 c.getPatientId(), c.getPatientName(), c.getPatientPhone(), c.getPatientIdNumber(), c.getPatientEmail(),
                 c.getCaseNumber(), c.getCaseName(), c.getConditionDesc(),
-                c.getExamItems(), c.getExamResults(), status, c.getVersion()));
+                c.getExamItems(), c.getExamResults(),
+                c.getPrescriptionItems(), c.getAttachments(), c.getRecordDate(),
+                status, c.getVersion()));
     }
 }

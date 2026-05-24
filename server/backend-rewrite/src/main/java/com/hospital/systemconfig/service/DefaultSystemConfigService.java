@@ -50,4 +50,10 @@ public class DefaultSystemConfigService implements SystemConfigService {
         SystemConfig current = detail(id);
         return repository.save(new SystemConfig(current.getId(), current.getConfigKey(), current.getConfigValue(), targetStatus, current.getVersion()));
     }
+
+    @Override
+    public void delete(Long id, String actor) {
+        if (!repository.existsById(id)) throw new NotFoundException("SystemConfig not found");
+        repository.deleteById(id);
+    }
 }

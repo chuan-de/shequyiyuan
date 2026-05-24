@@ -63,10 +63,12 @@ public class DefaultVisitService implements VisitService {
 
     @Override
     public VisitResponse create(VisitCreateRequest req, String actor) {
-        if (visitRepo.existsByVisitNumber(req.visitNumber()))
+        String visitNumber = (req.visitNumber() == null || req.visitNumber().isBlank())
+            ? generateVisitNumber()
+            : req.visitNumber();
+        if (visitRepo.existsByVisitNumber(visitNumber))
             throw new IllegalArgumentException("Visit number already exists");
-        // Verify patient exists via JPA (will fail with FK if not)
-        VisitRecord record = new VisitRecord(req.patientId(), req.visitNumber(), req.fee(),
+        VisitRecord record = new VisitRecord(req.patientId(), visitNumber, req.fee(),
             req.keshiTypes(), req.visitDate(), req.registrationNotes(), req.visitContent());
         record = visitRepo.save(record);
         return detail(record.getId());
@@ -76,9 +78,6 @@ public class DefaultVisitService implements VisitService {
     public VisitResponse update(Long id, VisitUpdateRequest req, String actor) {
         VisitRecord record = visitRepo.findById(id)
             .orElseThrow(() -> new NotFoundException("Visit not found"));
-        if (visitRepo.existsByVisitNumberAndIdNot(req.visitNumber(), id))
-            throw new IllegalArgumentException("Visit number already exists");
-        record.setVisitNumber(req.visitNumber());
         record.setFee(req.fee());
         record.setKeshiTypes(req.keshiTypes());
         if (req.visitDate() != null) record.setVisitDate(req.visitDate());
@@ -86,6 +85,24 @@ public class DefaultVisitService implements VisitService {
         record.setVisitContent(req.visitContent());
         visitRepo.save(record);
         return detail(id);
+    }
+
+    private String generateVisitNumber() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        String stamp = now.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        int suffix = (int) (Math.random() * 900 + 100);
+        for (int attempt = 0; attempt < 5; attempt++) {
+            String candidate = "JZ" + stamp + suffix;
+            if (!visitRepo.existsByVisitNumber(candidate)) return candidate;
+            suffix++;
+        }
+        throw new IllegalStateException("Failed to generate unique visit number");
+    }
+
+    @Override
+    public void delete(Long id, String actor) {
+        if (!visitRepo.existsById(id)) throw new NotFoundException("Visit not found");
+        visitRepo.deleteById(id);
     }
 
     private String blank(String s) { return (s == null || s.isBlank()) ? null : s; }

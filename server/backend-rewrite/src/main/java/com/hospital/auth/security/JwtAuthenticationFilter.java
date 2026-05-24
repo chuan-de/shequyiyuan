@@ -46,6 +46,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
+        // Sliding session: re-issue a token with a fresh TTL so an active user is never
+        // surprised by expiration mid-session. The browser reads X-Refreshed-Token and
+        // overwrites the stored access token.
+        try {
+            String refreshed = jwtService.generateToken(username, jwtService.extractRole(token));
+            response.setHeader("X-Refreshed-Token", refreshed);
+        } catch (Exception ignored) {
+            // Never block the request on a refresh failure.
+        }
+
         filterChain.doFilter(request, response);
     }
 }

@@ -77,6 +77,13 @@ public class ReceptionController {
         return ApiResponse.ok(null);
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('receptions:delete')")
+    public ApiResponse<Void> delete(@PathVariable Long id, Principal principal) {
+        receptionService.delete(id, actor(principal));
+        return ApiResponse.ok(null);
+    }
+
     private static String actor(Principal principal) {
         return principal == null ? "system" : principal.getName();
     }

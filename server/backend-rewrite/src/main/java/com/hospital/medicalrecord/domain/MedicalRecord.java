@@ -2,8 +2,12 @@ package com.hospital.medicalrecord.domain;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
 @Entity
 @Table(name = "medical_record")
@@ -61,6 +65,17 @@ public class MedicalRecord {
     @Column(name = "exam_results", columnDefinition = "TEXT")
     private String examResults;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "prescription_items", columnDefinition = "jsonb")
+    private List<Map<String, Object>> prescriptionItems;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "attachments", columnDefinition = "jsonb")
+    private List<Map<String, Object>> attachments;
+
+    @Column(name = "record_date")
+    private Instant recordDate;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MedicalRecordStatus status;
@@ -83,6 +98,8 @@ public class MedicalRecord {
                          Long patientId, String patientName, String patientPhone, String patientIdNumber,
                          String patientEmail, String caseNumber, String caseName,
                          String conditionDesc, String examItems, String examResults,
+                         List<Map<String, Object>> prescriptionItems,
+                         List<Map<String, Object>> attachments, Instant recordDate,
                          MedicalRecordStatus status, Long version) {
         this.id = id;
         this.doctorId = doctorId;
@@ -101,6 +118,9 @@ public class MedicalRecord {
         this.conditionDesc = conditionDesc;
         this.examItems = examItems;
         this.examResults = examResults;
+        this.prescriptionItems = prescriptionItems;
+        this.attachments = attachments;
+        this.recordDate = recordDate;
         this.status = status;
         this.version = version != null ? version : 0L;
     }
@@ -122,6 +142,9 @@ public class MedicalRecord {
     public String getConditionDesc() { return conditionDesc; }
     public String getExamItems() { return examItems; }
     public String getExamResults() { return examResults; }
+    public List<Map<String, Object>> getPrescriptionItems() { return prescriptionItems; }
+    public List<Map<String, Object>> getAttachments() { return attachments; }
+    public Instant getRecordDate() { return recordDate; }
     public MedicalRecordStatus getStatus() { return status; }
     public Long getVersion() { return version; }
     public Instant getCreatedAt() { return createdAt; }

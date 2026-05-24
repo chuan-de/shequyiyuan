@@ -11,4 +11,5 @@ public interface HealthRecordService {
     HealthRecord create(HealthRecordUpsertRequest request, String actor);
     HealthRecord update(Long id, HealthRecordUpsertRequest request, String actor);
     HealthRecord changeStatus(Long id, HealthRecordStatus status, String actor);
+    void delete(Long id, String actor);
 }

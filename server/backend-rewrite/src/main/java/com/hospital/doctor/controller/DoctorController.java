@@ -1,6 +1,8 @@
 package com.hospital.doctor.controller;
 
 import com.hospital.common.ApiResponse;
+import com.hospital.common.PageQueryUtils;
+import com.hospital.common.PageResponse;
 import com.hospital.doctor.dto.*;
 import com.hospital.doctor.service.DoctorService;
 import jakarta.validation.Valid;
@@ -19,12 +21,17 @@ public class DoctorController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('doctors:read')")
-    public ApiResponse<List<DoctorResponse>> list(
+    public ApiResponse<PageResponse<DoctorResponse>> list(
         @RequestParam(required = false) String keyword,
         @RequestParam(required = false) String uuidNumber,
         @RequestParam(required = false) String fullName,
-        @RequestParam(required = false) Integer sexTypes) {
-        return ApiResponse.ok(service.list(keyword, uuidNumber, fullName, sexTypes));
+        @RequestParam(required = false) Integer sexTypes,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(required = false) String sortBy,
+        @RequestParam(defaultValue = "asc") String sortDir) {
+        List<DoctorResponse> all = service.list(keyword, uuidNumber, fullName, sexTypes);
+        return ApiResponse.ok(PageQueryUtils.toPage(all, page, size, sortBy, sortDir));
     }
 
     @GetMapping("/{id}")
@@ -58,6 +65,13 @@ public class DoctorController {
     public ApiResponse<Void> resetPassword(@PathVariable Long id,
         @RequestBody @Valid DoctorResetPasswordRequest req, Principal p) {
         service.resetPassword(id, req.newPassword(), p == null ? "system" : p.getName());
+        return ApiResponse.ok(null);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('doctors:delete')")
+    public ApiResponse<Void> delete(@PathVariable Long id, Principal p) {
+        service.delete(id, p == null ? "system" : p.getName());
         return ApiResponse.ok(null);
     }
 }

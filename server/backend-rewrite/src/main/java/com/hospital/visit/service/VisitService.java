@@ -10,4 +10,5 @@ public interface VisitService {
     VisitResponse detail(Long id);
     VisitResponse create(VisitCreateRequest request, String actor);
     VisitResponse update(Long id, VisitUpdateRequest request, String actor);
+    void delete(Long id, String actor);
 }

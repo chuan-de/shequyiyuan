@@ -10,4 +10,5 @@ public interface FamilyDoctorService {
     FamilyDoctorResponse update(Long id, FamilyDoctorUpdateRequest request, String actor);
     FamilyDoctorResponse changeStatus(Long id, boolean enabled, String actor);
     void resetPassword(Long id, String newPassword, String actor);
+    void delete(Long id, String actor);
 }

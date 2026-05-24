@@ -145,6 +145,17 @@ public class AuthService implements UserAccountService {
 
     @Override
     @Transactional
+    public void deleteUser(long userId) {
+        int rows = jdbcClient.sql("DELETE FROM app_user WHERE id = :id")
+            .param("id", userId)
+            .update();
+        if (rows == 0) {
+            throw new com.hospital.common.NotFoundException("User not found");
+        }
+    }
+
+    @Override
+    @Transactional
     public void resetPassword(long userId, String newPassword) {
         if (newPassword == null || newPassword.length() < 6) {
             throw new IllegalArgumentException("Password must be at least 6 characters");

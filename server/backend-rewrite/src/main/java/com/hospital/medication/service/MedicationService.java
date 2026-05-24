@@ -12,4 +12,5 @@ public interface MedicationService {
     Medication update(Long id, MedicationUpsertRequest request, String actor);
     Medication changeStatus(Long id, MedicationStatus status, String actor);
     void adjustInventory(Long id, int delta, String reason, String operator);
+    void delete(Long id, String actor);
 }

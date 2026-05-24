@@ -3,6 +3,8 @@ package com.hospital.familydoctor.controller;
 import com.hospital.familydoctor.dto.*;
 import com.hospital.familydoctor.service.FamilyDoctorService;
 import com.hospital.common.ApiResponse;
+import com.hospital.common.PageQueryUtils;
+import com.hospital.common.PageResponse;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
@@ -18,11 +20,16 @@ public class FamilyDoctorController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('family-doctors:read')")
-    public ApiResponse<List<FamilyDoctorResponse>> list(
+    public ApiResponse<PageResponse<FamilyDoctorResponse>> list(
         @RequestParam(required = false) String keyword,
         @RequestParam(required = false) String fullName,
-        @RequestParam(required = false) Integer sexTypes) {
-        return ApiResponse.ok(service.list(keyword, fullName, sexTypes));
+        @RequestParam(required = false) Integer sexTypes,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(required = false) String sortBy,
+        @RequestParam(defaultValue = "asc") String sortDir) {
+        List<FamilyDoctorResponse> all = service.list(keyword, fullName, sexTypes);
+        return ApiResponse.ok(PageQueryUtils.toPage(all, page, size, sortBy, sortDir));
     }
 
     @GetMapping("/{id}")
@@ -56,6 +63,13 @@ public class FamilyDoctorController {
     public ApiResponse<Void> resetPassword(@PathVariable Long id,
         @RequestBody @Valid FamilyDoctorResetPasswordRequest req, Principal p) {
         service.resetPassword(id, req.newPassword(), p == null ? "system" : p.getName());
+        return ApiResponse.ok(null);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('family-doctors:delete')")
+    public ApiResponse<Void> delete(@PathVariable Long id, Principal p) {
+        service.delete(id, p == null ? "system" : p.getName());
         return ApiResponse.ok(null);
     }
 }

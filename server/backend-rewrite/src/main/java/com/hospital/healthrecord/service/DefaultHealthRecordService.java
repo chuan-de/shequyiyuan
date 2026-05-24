@@ -52,6 +52,12 @@ public class DefaultHealthRecordService implements HealthRecordService {
     }
 
     @Override
+    public void delete(Long id, String actor) {
+        if (!repository.existsById(id)) throw new NotFoundException("Health record not found");
+        repository.deleteById(id);
+    }
+
+    @Override
     public HealthRecord changeStatus(Long id, HealthRecordStatus status, String actor) {
         HealthRecord c = detail(id);
         return repository.save(new HealthRecord(c.getId(), c.getPatientId(), c.getPatientName(), c.getPatientPhone(),

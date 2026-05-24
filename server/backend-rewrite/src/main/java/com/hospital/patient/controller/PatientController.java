@@ -77,6 +77,13 @@ public class PatientController {
         return ApiResponse.ok(null);
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('patients:delete')")
+    public ApiResponse<Void> delete(@PathVariable Long id, Principal principal) {
+        patientService.delete(id, actor(principal));
+        return ApiResponse.ok(null);
+    }
+
     private static String actor(Principal principal) {
         return principal == null ? "system" : principal.getName();
     }

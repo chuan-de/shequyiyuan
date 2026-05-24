@@ -58,9 +58,9 @@ export function TablePagination({ page, size, total, onChange }: { page: number;
   const totalPages = Math.max(1, Math.ceil(total / size));
   return (
     <div className="flex items-center justify-end gap-2 text-sm">
-      <span className="hint">Page {page} / {totalPages} · Total {total}</span>
-      <button type="button" className="btn btn-secondary" disabled={page <= 1} onClick={() => onChange(page - 1)}>Prev</button>
-      <button type="button" className="btn btn-secondary" disabled={page >= totalPages} onClick={() => onChange(page + 1)}>Next</button>
+      <span className="hint">第 {page} / {totalPages} 页 · 共 {total} 条</span>
+      <button type="button" className="btn btn-secondary" disabled={page <= 1} onClick={() => onChange(page - 1)}>上一页</button>
+      <button type="button" className="btn btn-secondary" disabled={page >= totalPages} onClick={() => onChange(page + 1)}>下一页</button>
     </div>
   );
 }

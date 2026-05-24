@@ -105,6 +105,13 @@ public class DefaultFamilyDoctorService implements FamilyDoctorService {
         userAccountService.resetPassword(profile.getUserId(), newPassword);
     }
 
+    @Override
+    public void delete(Long id, String actor) {
+        FamilyDoctorProfile profile = profileRepo.findById(id)
+            .orElseThrow(() -> new NotFoundException("Family doctor not found"));
+        userAccountService.deleteUser(profile.getUserId());
+    }
+
     private String blank(String s) { return (s == null || s.isBlank()) ? null : s; }
 
     private FamilyDoctorResponse mapRow(ResultSet rs, int rowNum) throws SQLException {

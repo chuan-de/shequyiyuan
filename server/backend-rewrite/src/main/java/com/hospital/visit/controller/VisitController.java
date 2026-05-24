@@ -5,6 +5,8 @@ import com.hospital.visit.dto.VisitResponse;
 import com.hospital.visit.dto.VisitUpdateRequest;
 import com.hospital.visit.service.VisitService;
 import com.hospital.common.ApiResponse;
+import com.hospital.common.PageQueryUtils;
+import com.hospital.common.PageResponse;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
@@ -20,11 +22,16 @@ public class VisitController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('visits:read')")
-    public ApiResponse<List<VisitResponse>> list(
+    public ApiResponse<PageResponse<VisitResponse>> list(
         @RequestParam(required = false) String visitNumber,
         @RequestParam(required = false) Integer keshiTypes,
-        @RequestParam(required = false) String patientName) {
-        return ApiResponse.ok(service.list(visitNumber, keshiTypes, patientName));
+        @RequestParam(required = false) String patientName,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(required = false) String sortBy,
+        @RequestParam(defaultValue = "asc") String sortDir) {
+        List<VisitResponse> all = service.list(visitNumber, keshiTypes, patientName);
+        return ApiResponse.ok(PageQueryUtils.toPage(all, page, size, sortBy, sortDir));
     }
 
     @GetMapping("/{id}")
@@ -44,5 +51,12 @@ public class VisitController {
     public ApiResponse<VisitResponse> update(@PathVariable Long id,
         @RequestBody @Valid VisitUpdateRequest req, Principal p) {
         return ApiResponse.ok(service.update(id, req, p == null ? "system" : p.getName()));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('visits:delete')")
+    public ApiResponse<Void> delete(@PathVariable Long id, Principal p) {
+        service.delete(id, p == null ? "system" : p.getName());
+        return ApiResponse.ok(null);
     }
 }

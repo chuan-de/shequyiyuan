@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
 import { CurrentUserResponse, currentUser } from '@/lib/api';
-import { readToken } from '@/lib/token-storage';
+import { clearToken, readToken } from '@/lib/token-storage';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -15,7 +15,7 @@ export default function DashboardPage() {
     if (!token) { router.replace('/login'); return; }
     currentUser(token.accessToken)
       .then(setUser)
-      .catch(() => router.replace('/login'))
+      .catch(() => { clearToken(); router.replace('/login'); })
       .finally(() => setLoading(false));
   }, [router]);
 

@@ -29,4 +29,10 @@ public class SystemConfigController {
     public ApiResponse<SystemConfig> update(@PathVariable Long id, @RequestBody @Valid SystemConfigUpsertRequest req, Principal p) { return ApiResponse.ok(service.update(id, req, p == null ? "system" : p.getName())); }
     @PatchMapping("/{id}/status") @PreAuthorize("hasAuthority('configs:status')")
     public ApiResponse<SystemConfig> status(@PathVariable Long id, @RequestBody @Valid SystemConfigStatusChangeRequest req, Principal p) { return ApiResponse.ok(service.changeStatus(id, req.targetStatus(), p == null ? "system" : p.getName())); }
+
+    @DeleteMapping("/{id}") @PreAuthorize("hasAuthority('configs:delete')")
+    public ApiResponse<Void> delete(@PathVariable Long id, Principal p) {
+        service.delete(id, p == null ? "system" : p.getName());
+        return ApiResponse.ok(null);
+    }
 }

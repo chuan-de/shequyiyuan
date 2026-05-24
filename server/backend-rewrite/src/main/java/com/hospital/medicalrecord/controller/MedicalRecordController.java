@@ -28,18 +28,25 @@ public class MedicalRecordController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('bingli:read')")
+    @PreAuthorize("hasAnyAuthority('medical-records:read', 'bingli:read')")
     public ApiResponse<MedicalRecord> detail(@PathVariable Long id) { return ApiResponse.ok(service.detail(id)); }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('bingli:write')")
+    @PreAuthorize("hasAnyAuthority('medical-records:write', 'bingli:write')")
     public ApiResponse<MedicalRecord> create(@RequestBody @Valid MedicalRecordUpsertRequest request, Principal principal) { return ApiResponse.ok(service.create(request, principal == null ? "system" : principal.getName())); }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('bingli:write')")
+    @PreAuthorize("hasAnyAuthority('medical-records:write', 'bingli:write')")
     public ApiResponse<MedicalRecord> update(@PathVariable Long id, @RequestBody @Valid MedicalRecordUpsertRequest request, Principal principal) { return ApiResponse.ok(service.update(id, request, principal == null ? "system" : principal.getName())); }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAuthority('bingli:status')")
+    @PreAuthorize("hasAnyAuthority('medical-records:status', 'bingli:status')")
     public ApiResponse<MedicalRecord> status(@PathVariable Long id, @RequestBody @Valid MedicalRecordStatusChangeRequest request, Principal principal) { return ApiResponse.ok(service.changeStatus(id, request.targetStatus(), principal == null ? "system" : principal.getName())); }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('medical-records:delete')")
+    public ApiResponse<Void> delete(@PathVariable Long id, Principal principal) {
+        service.delete(id, principal == null ? "system" : principal.getName());
+        return ApiResponse.ok(null);
+    }
 }

@@ -60,4 +60,11 @@ public class MedicationController {
         medicationService.adjustInventory(id, req.delta(), req.reason(), principal == null ? "system" : principal.getName());
         return ApiResponse.ok(null);
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('medications:delete')")
+    public ApiResponse<Void> delete(@PathVariable Long id, Principal principal) {
+        medicationService.delete(id, principal == null ? "system" : principal.getName());
+        return ApiResponse.ok(null);
+    }
 }

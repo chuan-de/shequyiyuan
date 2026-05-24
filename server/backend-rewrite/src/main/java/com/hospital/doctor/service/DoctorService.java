@@ -10,4 +10,5 @@ public interface DoctorService {
     DoctorResponse update(Long id, DoctorUpdateRequest request, String actor);
     DoctorResponse changeStatus(Long id, boolean enabled, String actor);
     void resetPassword(Long id, String newPassword, String actor);
+    void delete(Long id, String actor);
 }

@@ -92,4 +92,10 @@ public class DefaultMedicationService implements MedicationService {
         MedicationInventoryLog log = new MedicationInventoryLog(id, delta, stockAfter, reason, operator);
         logRepo.save(log);
     }
+
+    @Override
+    public void delete(Long id, String actor) {
+        if (!repository.existsById(id)) throw new NotFoundException("Medication not found");
+        repository.deleteById(id);
+    }
 }

@@ -1,6 +1,8 @@
 package com.hospital.department.controller;
 
 import com.hospital.common.ApiResponse;
+import com.hospital.common.PageQueryUtils;
+import com.hospital.common.PageResponse;
 import com.hospital.department.dto.DepartmentRequest;
 import com.hospital.department.dto.DepartmentResponse;
 import com.hospital.department.service.DepartmentService;
@@ -20,10 +22,15 @@ public class DepartmentController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('departments:read')")
-    public ApiResponse<List<DepartmentResponse>> list(
+    public ApiResponse<PageResponse<DepartmentResponse>> list(
         @RequestParam(required = false) String deptName,
-        @RequestParam(required = false) Integer deptTypes) {
-        return ApiResponse.ok(service.list(deptName, deptTypes));
+        @RequestParam(required = false) Integer deptTypes,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(required = false) String sortBy,
+        @RequestParam(defaultValue = "asc") String sortDir) {
+        List<DepartmentResponse> all = service.list(deptName, deptTypes);
+        return ApiResponse.ok(PageQueryUtils.toPage(all, page, size, sortBy, sortDir));
     }
 
     @GetMapping("/{id}")

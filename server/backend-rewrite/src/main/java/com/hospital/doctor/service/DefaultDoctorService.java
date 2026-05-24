@@ -117,6 +117,13 @@ public class DefaultDoctorService implements DoctorService {
         userAccountService.resetPassword(profile.getUserId(), newPassword);
     }
 
+    @Override
+    public void delete(Long id, String actor) {
+        DoctorProfile profile = profileRepo.findById(id)
+            .orElseThrow(() -> new NotFoundException("Doctor not found"));
+        userAccountService.deleteUser(profile.getUserId());
+    }
+
     private String blank(String s) { return (s == null || s.isBlank()) ? null : s; }
 
     private DoctorResponse mapRow(ResultSet rs, int rowNum) throws SQLException {

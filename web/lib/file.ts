@@ -1,25 +1,41 @@
-export type FileUploadPayload = {
-  file: File;
-  businessType: string;
-  businessId?: string;
-  deduplicate?: boolean;
+import { applyAuthResponse } from './api';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8089';
+
+export type PhotoUploadResult = {
+  id: string;
+  url: string;
+  contentType: string;
+  sizeBytes: number;
+  originalFilename: string | null;
 };
 
-export async function uploadFile(payload: FileUploadPayload) {
+export async function uploadPhoto(token: string, file: File): Promise<PhotoUploadResult> {
   const formData = new FormData();
-  formData.append("file", payload.file);
-  formData.append("businessType", payload.businessType);
-  if (payload.businessId) formData.append("businessId", payload.businessId);
-  if (payload.deduplicate) formData.append("deduplicate", "true");
+  formData.append('file', file);
 
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/files`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("access_token") ?? ""}`,
-    },
+  const url = `${API_BASE_URL}/api/v1/photos`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
     body: formData,
   });
+  applyAuthResponse(response, url);
 
-  if (!response.ok) throw new Error("文件上传失败，请检查类型、大小或权限");
-  return response.json();
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('登录已过期，请重新登录后再上传');
+    }
+    let message = '图片上传失败';
+    try {
+      const body = await response.json();
+      message = body?.message || message;
+    } catch {
+      // ignore JSON parse errors
+    }
+    throw new Error(message);
+  }
+
+  const wrapped = await response.json();
+  return wrapped.data as PhotoUploadResult;
 }

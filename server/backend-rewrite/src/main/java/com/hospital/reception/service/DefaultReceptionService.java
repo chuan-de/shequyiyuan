@@ -127,6 +127,13 @@ public class DefaultReceptionService implements ReceptionService {
         userAccountService.resetPassword(profile.getUserId(), newPassword);
     }
 
+    @Override
+    public void delete(Long id, String actor) {
+        ReceptionProfile profile = profileRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Reception staff not found"));
+        userAccountService.deleteUser(profile.getUserId());
+    }
+
     private ReceptionResponse mapRow(ResultSet rs, int rowNum) throws SQLException {
         Integer sexTypes = rs.getObject("sex_types") != null ? rs.getInt("sex_types") : null;
         return new ReceptionResponse(

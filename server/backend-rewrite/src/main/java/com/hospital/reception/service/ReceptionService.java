@@ -12,4 +12,5 @@ public interface ReceptionService {
     ReceptionResponse update(Long id, ReceptionUpdateRequest request, String actor);
     ReceptionResponse changeStatus(Long id, boolean enabled, String actor);
     void resetPassword(Long id, String newPassword);
+    void delete(Long id, String actor);
 }

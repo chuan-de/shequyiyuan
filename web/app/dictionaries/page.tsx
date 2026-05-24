@@ -38,7 +38,7 @@ export default function DictionariesPage() {
 
     currentUser(currentToken).then((user) => {
       if (!hasPermission(user, 'dictionary:read')) {
-        setError('Current account does not have dictionary:read permission');
+        setError('当前账号没有字典查看权限');
         router.replace('/dashboard');
       }
     }).catch(() => {});
@@ -49,7 +49,7 @@ export default function DictionariesPage() {
         if (result.length > 0) setSelectedDictionaryCode(result[0].code);
       })
       .catch(() => {
-        setError('Failed to load dictionaries. Please sign in again.');
+        setError('加载字典失败，请重新登录');
         localStorage.removeItem('access_token');
         localStorage.removeItem('token_type');
         router.replace('/login');
@@ -72,17 +72,17 @@ export default function DictionariesPage() {
         setTotal(res.total);
       })
       .catch(() => {
-        setError('Failed to load dictionary items. Please try again later.');
+        setError('加载字典项失败，请稍后重试');
         setItems([]);
       })
       .finally(() => setLoadingItems(false));
   }, [selectedDictionaryCode, token, itemName, page, size, sort]);
 
   const columns: TableColumn<DictionaryItemResponse>[] = [
-    { key: 'name', title: 'Name', sortable: true, render: (item) => item.name },
-    { key: 'value', title: 'Code', sortable: true, render: (item) => <span className="font-mono text-xs">{item.value}</span> },
-    { key: 'sortOrder', title: 'Sort Order', sortable: true, render: (item) => item.sortOrder },
-    { key: 'enabled', title: 'Status', sortable: true, render: (item) => item.enabled ? 'Enabled' : 'Disabled' }
+    { key: 'name', title: '名称', sortable: true, render: (item) => item.name },
+    { key: 'value', title: '编码', sortable: true, render: (item) => <span className="font-mono text-xs">{item.value}</span> },
+    { key: 'sortOrder', title: '排序', sortable: true, render: (item) => item.sortOrder },
+    { key: 'enabled', title: '状态', sortable: true, render: (item) => item.enabled ? '启用' : '禁用' }
   ];
 
   function onSort(field: string) {
@@ -91,12 +91,12 @@ export default function DictionariesPage() {
   }
 
   return (
-    <AppShell title="Dictionary Management" description="Browse dictionary categories and dictionary items.">
+    <AppShell title="数据字典" description="管理字典分类与字典项">
       <div className="grid gap-4 md:grid-cols-[280px_1fr]">
         <Card className="space-y-3">
-          <h2 className="text-lg font-semibold">Dictionary Categories</h2>
-          {loadingDictionaries ? <p className="hint">Loading...</p> : null}
-          {!loadingDictionaries && dictionaries.length === 0 ? <p className="hint">No dictionary categories</p> : null}
+          <h2 className="text-lg font-semibold">字典分类</h2>
+          {loadingDictionaries ? <p className="hint">加载中…</p> : null}
+          {!loadingDictionaries && dictionaries.length === 0 ? <p className="hint">暂无字典分类</p> : null}
           <div className="space-y-2">
             {dictionaries.map((dictionary) => (
               <Button
@@ -113,22 +113,22 @@ export default function DictionariesPage() {
 
         <Card className="space-y-4 overflow-auto">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Dictionary Items</h2>
-            <Input placeholder="Filter by item name" value={itemName} onChange={(event) => { setItemName(event.target.value); setPage(1); }} className="max-w-[280px]" />
+            <h2 className="text-lg font-semibold">字典项</h2>
+            <Input placeholder="按名称搜索" value={itemName} onChange={(event) => { setItemName(event.target.value); setPage(1); }} className="max-w-[280px]" />
             <Link href="/dashboard" className={buttonVariantClass('secondary')}>
-              Back to Dashboard
+              返回工作台
             </Link>
           </div>
 
           {error ? <p className="error">{error}</p> : null}
-          {loadingItems ? <p className="hint">Loading dictionary items...</p> : null}
+          {loadingItems ? <p className="hint">加载字典项中…</p> : null}
 
           {!loadingItems && items.length > 0 ? (
             <DataTable columns={columns} rows={items} sort={sort} onSort={onSort} />
           ) : null}
           <TablePagination page={page} size={size} total={total} onChange={setPage} />
 
-          {!loadingItems && selectedDictionaryCode && items.length === 0 ? <p className="hint">No items in this dictionary</p> : null}
+          {!loadingItems && selectedDictionaryCode && items.length === 0 ? <p className="hint">当前字典暂无数据</p> : null}
         </Card>
       </div>
     </AppShell>

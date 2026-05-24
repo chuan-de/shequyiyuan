@@ -2,15 +2,18 @@ package com.hospital.medicalrecord.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
 public record MedicalRecordUpsertRequest(
         @NotNull Long doctorId,
         @NotNull Long patientId,
-        @NotBlank String caseNumber,
+        String caseNumber,
         @NotBlank String caseName,
-        @NotBlank String conditionDesc,
-        @NotBlank String examItems,
-        @NotBlank String examResults,
+        String conditionDesc,
+        String examItems,
+        String examResults,
         String doctorUuidNumber,
         String doctorName,
         String doctorPhone,
@@ -20,5 +23,8 @@ public record MedicalRecordUpsertRequest(
         String patientPhone,
         String patientIdNumber,
         String patientEmail,
+        List<Map<String, Object>> prescriptionItems,
+        List<Map<String, Object>> attachments,
+        Instant recordDate,
         Long version
 ) {}

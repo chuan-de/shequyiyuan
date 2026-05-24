@@ -10,4 +10,5 @@ public interface SystemConfigService {
     SystemConfig create(SystemConfigUpsertRequest request, String actor);
     SystemConfig update(Long id, SystemConfigUpsertRequest request, String actor);
     SystemConfig changeStatus(Long id, ConfigStatus targetStatus, String actor);
+    void delete(Long id, String actor);
 }

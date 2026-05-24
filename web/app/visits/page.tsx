@@ -1,7 +1,6 @@
 'use client';
-import { EntityManagementPage } from '@/components/business/entity-management-page';
-import { visitPageConfig } from '@/components/business/forms/visit-form';
+import { VisitManagementPage } from '@/components/business/forms/visit-form';
 
 export default function Page() {
-  return <EntityManagementPage config={visitPageConfig} />;
+  return <VisitManagementPage />;
 }
