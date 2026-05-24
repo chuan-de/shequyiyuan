@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -109,6 +109,116 @@ function initForm(fields: EntityFormField[], row?: EntityRecord | null): Record<
     }
     return acc;
   }, {});
+}
+
+const PHOTO_URL_RE = /\/api\/v1\/photos\/[^/]+\/content/;
+const DATETIME_KEYS = new Set([
+  'createdAt', 'updatedAt', 'recordDate', 'recordedAt', 'visitDate',
+  'lastLoginAt', 'aiConsentAt', 'consentedAt',
+]);
+
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * Pretty-print a detail-view value.
+ * - photo URLs become thumbnails
+ * - datetime-looking keys get formatted
+ * - arrays of prescription-like objects render as a list
+ * - arrays of attachment-like objects render as image/PDF chips
+ * - generic objects fall back to indented JSON
+ */
+function renderDetailValue(key: string, value: unknown): ReactNode {
+  if (value === null || value === undefined || value === '') return <span className="text-slate-400">—</span>;
+
+  // Key-aware mappings for enum-ish fields shared across modules.
+  if (key === 'sexTypes' && (value === 1 || value === '1')) return <span>男</span>;
+  if (key === 'sexTypes' && (value === 2 || value === '2')) return <span>女</span>;
+  if (key === 'enabled' || key === 'status') {
+    if (value === true || value === 'ENABLED' || value === 'ACTIVE' || value === 'COMPLETED') {
+      return <span className="badge badge-green">启用</span>;
+    }
+    if (value === false || value === 'DISABLED' || value === 'INACTIVE' || value === 'SUSPENDED' || value === 'ARCHIVED' || value === 'CANCELLED') {
+      return <span className="badge badge-red">禁用</span>;
+    }
+  }
+
+  if (typeof value === 'string') {
+    if (PHOTO_URL_RE.test(value)) {
+      return <img src={value} alt="" className="h-20 w-20 rounded-lg border border-slate-200 object-cover" />;
+    }
+    if (DATETIME_KEYS.has(key) && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+      return <span>{formatDateTime(value)}</span>;
+    }
+    return <span className="whitespace-pre-wrap break-words">{value}</span>;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return <span>{String(value)}</span>;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-slate-400">—</span>;
+
+    // Prescription-like: [{ medicationId|medicationName, qty|quantity, ... }]
+    if (value.every((v) => typeof v === 'object' && v && ('medicationName' in v || 'medicationId' in v))) {
+      return (
+        <ul className="space-y-1">
+          {value.map((item: Record<string, unknown>, idx) => (
+            <li key={idx} className="rounded border border-slate-200 bg-slate-50 px-2 py-1">
+              <span className="font-medium">{String(item.medicationName ?? item.medicationId ?? '—')}</span>
+              <span className="ml-2 text-slate-500">× {String(item.qty ?? item.quantity ?? 1)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    // Attachment-like: [{ url, filename, contentType }]
+    if (value.every((v) => typeof v === 'object' && v && 'url' in v)) {
+      return (
+        <div className="flex flex-wrap gap-2">
+          {value.map((item: Record<string, unknown>, idx) => {
+            const url = String(item.url ?? '');
+            const ct = String(item.contentType ?? '');
+            const isPdf = ct.includes('pdf') || url.toLowerCase().endsWith('.pdf');
+            return isPdf ? (
+              <a key={idx} href={url} target="_blank" rel="noreferrer"
+                 className="inline-flex h-20 w-20 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-xs font-medium text-rose-600">
+                PDF
+              </a>
+            ) : (
+              <a key={idx} href={url} target="_blank" rel="noreferrer">
+                <img src={url} alt={String(item.filename ?? '')}
+                     className="h-20 w-20 rounded-lg border border-slate-200 object-cover" />
+              </a>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // Generic array of primitives or objects.
+    return (
+      <ul className="list-inside list-disc space-y-0.5">
+        {value.map((v, idx) => (
+          <li key={idx}>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (typeof value === 'object') {
+    return (
+      <pre className="overflow-auto rounded bg-slate-50 p-2 text-xs">{JSON.stringify(value, null, 2)}</pre>
+    );
+  }
+
+  return <span>{String(value)}</span>;
 }
 
 function StatusBadge({ value }: { value: unknown }) {
@@ -690,19 +800,24 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
           footer={<Button variant="secondary" onClick={() => setDetail(null)}>关闭</Button>}
         >
           <div className="space-y-3">
-            {Object.entries(detail).map(([k, v]) => {
-              const isPhoto = typeof v === 'string' && /\/api\/v1\/photos\/[^/]+\/content/.test(v);
-              return (
-                <div key={k} className="flex gap-4">
-                  <span className="w-36 flex-shrink-0 text-sm font-semibold text-slate-500">{config.labelMap?.[k] ?? k}</span>
-                  {isPhoto ? (
-                    <img src={String(v)} alt="" className="h-20 w-20 rounded-lg border border-slate-200 object-cover" />
-                  ) : (
-                    <span className="text-sm text-slate-800 break-all">{String(v ?? '-')}</span>
-                  )}
-                </div>
-              );
-            })}
+            {(() => {
+              // Render in labelMap order when defined (filters out internal/english
+              // fields), otherwise fall back to the raw entry list for configs
+              // that haven't defined a labelMap yet.
+              const orderedKeys = config.labelMap
+                ? Object.keys(config.labelMap).filter((k) => k in detail)
+                : Object.keys(detail);
+              return orderedKeys.map((k) => {
+                const v = (detail as Record<string, unknown>)[k];
+                const label = config.labelMap?.[k] ?? k;
+                return (
+                  <div key={k} className="flex gap-4">
+                    <span className="w-36 flex-shrink-0 text-sm font-semibold text-slate-500">{label}</span>
+                    <div className="min-w-0 flex-1 text-sm text-slate-800">{renderDetailValue(k, v)}</div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </Modal>
       )}

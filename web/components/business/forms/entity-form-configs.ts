@@ -100,6 +100,11 @@ export const patientsPageConfig: EntityPageConfig = {
       },
     },
   ],
+  labelMap: {
+    username: '账号', fullName: '姓名', sexTypes: '性别',
+    phone: '手机号', idNumber: '身份证号', email: '邮箱',
+    enabled: '状态', createdAt: '创建时间',
+  },
   createPayload: (form) => ({
     username: form.username,
     password: form.password,
@@ -143,6 +148,11 @@ export const receptionsPageConfig: EntityPageConfig = {
       onClick: (row, helpers) => resetPasswordAction(row, helpers, '/api/v1/receptions'),
     },
   ],
+  labelMap: {
+    username: '账号', fullName: '姓名', uuidNumber: '工号', sexTypes: '性别',
+    phone: '手机号', email: '邮箱',
+    enabled: '状态', createdAt: '创建时间',
+  },
   createPayload: (form) => ({
     username: form.username,
     password: form.password,
@@ -195,7 +205,12 @@ export const medicationsPageConfig: EntityPageConfig = {
       onClick: (row, helpers) => adjustInventoryAction(row, helpers, 'reduce'),
     },
   ],
-  labelMap: { code: '药品编号', name: '药品名称', price: '药品价格', stock: '药品库存', mainEffect: '主要药效', sideEffect: '副作用', detail: '药品详情', enabled: '状态', createdAt: '创建时间' },
+  labelMap: {
+    code: '药品编号', name: '药品名称',
+    price: '药品价格', stock: '药品库存',
+    mainEffect: '主要药效', sideEffect: '副作用', detail: '药品详情',
+    status: '状态', createdAt: '创建时间', updatedAt: '更新时间',
+  },
   createPayload: (form) => ({ name: form.name, price: form.price ? Number(form.price) : 0, stock: form.stock ? Number(form.stock) : 0, mainEffect: form.mainEffect || undefined, sideEffect: form.sideEffect || undefined, detail: form.detail || undefined }),
   updatePayload: (form) => ({ name: form.name, price: form.price ? Number(form.price) : 0, mainEffect: form.mainEffect || undefined, sideEffect: form.sideEffect || undefined, detail: form.detail || undefined }),
 };
@@ -239,7 +254,11 @@ export const doctorPageConfig: EntityPageConfig = {
       onClick: (row, helpers) => resetPasswordAction(row, helpers, '/api/v1/doctors'),
     },
   ],
-  labelMap: { uuidNumber: '工号', username: '账户', fullName: '医生姓名', photoUrl: '头像', sexTypes: '性别', phone: '联系方式', idNumber: '医生身份证号', email: '邮箱', enabled: '状态', userId: '用户ID', createdAt: '创建时间' },
+  labelMap: {
+    uuidNumber: '工号', username: '账户', fullName: '医生姓名', photoUrl: '头像',
+    sexTypes: '性别', phone: '联系方式', idNumber: '医生身份证号', email: '邮箱',
+    enabled: '状态', createdAt: '创建时间',
+  },
   createPayload: (form) => ({ username: form.username, password: form.password, uuidNumber: form.uuidNumber || undefined, fullName: form.fullName, photoUrl: form.photoUrl || undefined, sexTypes: form.sexTypes ? Number(form.sexTypes) : undefined, phone: form.phone || undefined, idNumber: form.idNumber || undefined, email: form.email || undefined }),
   updatePayload: (form) => ({ uuidNumber: form.uuidNumber || undefined, fullName: form.fullName, photoUrl: form.photoUrl || undefined, sexTypes: form.sexTypes ? Number(form.sexTypes) : undefined, phone: form.phone || undefined, idNumber: form.idNumber || undefined, email: form.email || undefined }),
 };
@@ -273,7 +292,19 @@ export const visitPageConfig: EntityPageConfig = {
     { key: 'keshiTypes', label: '科室' },
     { key: 'patientName', label: '用户姓名' },
   ],
-  labelMap: { patientFullName: '用户姓名', patientPhotoUrl: '头像', patientPhone: '联系方式', patientIdNumber: '用户身份证号', visitNumber: '就诊号', fee: '就诊费用', keshiTypes: '科室', visitDate: '日期', registrationNotes: '挂号备注', visitContent: '挂号详情', createdAt: '创建时间' },
+  labelMap: {
+    visitNumber: '就诊号',
+    visitDate: '日期',
+    patientFullName: '用户姓名',
+    patientPhotoUrl: '头像',
+    patientPhone: '联系方式',
+    patientIdNumber: '用户身份证号',
+    keshiTypes: '科室',
+    fee: '就诊费用',
+    registrationNotes: '挂号备注',
+    visitContent: '挂号详情',
+    createdAt: '创建时间',
+  },
   createPayload: (form) => ({ patientId: Number(form.patientId), fee: form.fee ? Number(form.fee) : undefined, keshiTypes: form.keshiTypes ? Number(form.keshiTypes) : undefined, visitDate: form.visitDate ? new Date(form.visitDate).toISOString() : undefined, registrationNotes: form.registrationNotes || undefined, visitContent: form.visitContent || undefined }),
   updatePayload: (form) => ({ fee: form.fee ? Number(form.fee) : undefined, keshiTypes: form.keshiTypes ? Number(form.keshiTypes) : undefined, visitDate: form.visitDate ? new Date(form.visitDate).toISOString() : undefined, registrationNotes: form.registrationNotes || undefined, visitContent: form.visitContent || undefined }),
 };
@@ -312,7 +343,11 @@ export const familyDoctorsPageConfig: EntityPageConfig = {
       onClick: (row, helpers) => resetPasswordAction(row, helpers, '/api/v1/family-doctors'),
     },
   ],
-  labelMap: { username: '账户', fullName: '家庭医生负责人姓名', photoUrl: '头像', sexTypes: '性别', phone: '联系方式', email: '邮箱', enabled: '状态', createdAt: '创建时间' },
+  labelMap: {
+    username: '账户', fullName: '家庭医生负责人姓名', photoUrl: '头像',
+    sexTypes: '性别', phone: '联系方式', email: '邮箱',
+    enabled: '状态', createdAt: '创建时间',
+  },
   createPayload: (form) => ({ username: form.username, password: form.password, fullName: form.fullName, photoUrl: form.photoUrl || undefined, sexTypes: form.sexTypes ? Number(form.sexTypes) : undefined, phone: form.phone || undefined, email: form.email || undefined }),
   updatePayload: (form) => ({ fullName: form.fullName, photoUrl: form.photoUrl || undefined, sexTypes: form.sexTypes ? Number(form.sexTypes) : undefined, phone: form.phone || undefined, email: form.email || undefined }),
 };
@@ -355,12 +390,26 @@ export const medicalRecordsPageConfig: EntityPageConfig = {
     { key: 'prescriptionItems', label: '药单', type: 'custom', defaultValue: '[]' },
     { key: 'attachments', label: '病历附件', type: 'custom', defaultValue: '[]' },
   ],
+  // 顺序即详情弹窗的展示顺序。不在 labelMap 里的字段（id/doctorId/patientId/
+  // doctorUuidNumber/version 等内部字段）不展示。
   labelMap: {
-    caseNumber: '病历编号', caseName: '病历名称', doctorName: '医生姓名', doctorPhone: '医生联系方式',
-    patientName: '患者姓名', patientPhone: '患者联系方式', patientIdNumber: '患者身份证号',
-    recordDate: '日期', conditionDesc: '病情描述', examItems: '检查项目', examResults: '检查结果',
-    prescriptionItems: '药单', attachments: '病历附件',
-    status: '状态', createdAt: '创建时间', updatedAt: '更新时间'
+    caseNumber: '病历编号',
+    caseName: '病历名称',
+    recordDate: '日期',
+    doctorName: '医生姓名',
+    doctorPhone: '医生联系方式',
+    doctorEmail: '医生邮箱',
+    patientName: '患者姓名',
+    patientPhone: '患者联系方式',
+    patientIdNumber: '患者身份证号',
+    patientEmail: '患者邮箱',
+    conditionDesc: '病情描述',
+    examItems: '检查项目',
+    examResults: '检查结果',
+    prescriptionItems: '药单',
+    attachments: '病历附件',
+    createdAt: '创建时间',
+    updatedAt: '更新时间',
   },
   createPayload: (form) => ({
     doctorId: Number(form.doctorId),
@@ -413,7 +462,18 @@ export const healthRecordsPageConfig: EntityPageConfig = {
     { key: 'unitTypes', label: '档案单位' },
     { key: 'patientName', label: '用户姓名' },
   ],
-  labelMap: { patientFullName: '用户姓名', patientPhotoUrl: '头像', patientPhone: '联系方式', patientIdNumber: '用户身份证号', title: '档案标题', otherMembers: '其他成员', unitTypes: '档案单位', recordedAt: '记录时间', content: '健康状况', createdAt: '创建时间' },
+  labelMap: {
+    title: '档案标题',
+    recordedAt: '记录时间',
+    patientFullName: '用户姓名',
+    patientPhotoUrl: '头像',
+    patientPhone: '联系方式',
+    patientIdNumber: '用户身份证号',
+    otherMembers: '其他成员',
+    unitTypes: '档案单位',
+    content: '健康状况',
+    createdAt: '创建时间',
+  },
   createPayload: (form) => ({ patientId: Number(form.patientId), title: form.title, otherMembers: form.otherMembers || undefined, unitTypes: form.unitTypes ? Number(form.unitTypes) : undefined, recordedAt: form.recordedAt ? new Date(form.recordedAt).toISOString() : undefined, content: form.content || undefined }),
   updatePayload: (form) => ({ title: form.title, otherMembers: form.otherMembers || undefined, unitTypes: form.unitTypes ? Number(form.unitTypes) : undefined, recordedAt: form.recordedAt ? new Date(form.recordedAt).toISOString() : undefined, content: form.content || undefined }),
 };
