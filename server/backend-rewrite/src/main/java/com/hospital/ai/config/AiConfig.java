@@ -1,5 +1,6 @@
 package com.hospital.ai.config;
 
+import java.net.http.HttpClient;
 import java.time.Duration;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -8,8 +9,10 @@ import org.springframework.boot.web.client.RestClientCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.reactive.JdkClientHttpConnector;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
 
 /**
  * Wires the cross-cutting AI infrastructure: the shared {@link RestClient} used
@@ -41,14 +44,33 @@ public class AiConfig {
     }
 
     /**
-     * Phase 3 will likely need a {@code WebClient} for SSE streaming. We
-     * expose a builder customizer here as a placeholder so streaming code can
-     * add it later without changing this configuration.
+     * Phase 3 SSE streaming runs through a {@link WebClient} (Reactor) — we
+     * use the JDK {@link HttpClient} connector to avoid pulling in
+     * reactor-netty just for one feature. Connect timeout mirrors the
+     * RestClient; read timeout is enforced per-subscription in the streaming
+     * code path so partial chunks during a long generation don't trip an
+     * idle-read timeout.
+     */
+    @Bean("aiWebClient")
+    public WebClient aiWebClient(AiProperties properties) {
+        Duration timeout = Duration.ofSeconds(properties.getTimeoutSeconds());
+        HttpClient jdkClient = HttpClient.newBuilder()
+                .connectTimeout(timeout)
+                .build();
+        return WebClient.builder()
+                .clientConnector(new JdkClientHttpConnector(jdkClient))
+                // Increase max in-memory size so SSE accumulators don't trip on
+                // long streaming responses. 16 MiB is far beyond any chat turn.
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
+                .build();
+    }
+
+    /**
+     * Placeholder customiser kept for backwards compatibility with anything
+     * that already wires it. Streaming code uses {@link #aiWebClient} above.
      */
     @Bean
     public RestClientCustomizer aiRestClientCustomizer() {
-        return builder -> {
-            // No-op for Phase 0; left as the wiring seam for streaming.
-        };
+        return builder -> { /* no-op */ };
     }
 }

@@ -12,6 +12,7 @@ import com.hospital.ai.client.AiCallTemplate.RawResponse;
 import com.hospital.ai.config.AiProperties;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.web.client.RestClient;
@@ -25,8 +26,20 @@ class AiCallTemplateTest {
         props.setBaseUrl("https://example.invalid/api/v3");
         props.setApiKey("dummy");
         props.setTimeoutSeconds(5);
-        // RestClient is unused by the test seam below; pass a placeholder.
-        return new AiCallTemplate(RestClient.builder().build(), props);
+        // RestClient + streaming deps are unused by the test seam below — pass empty providers.
+        return new AiCallTemplate(
+                RestClient.builder().build(), props,
+                empty(), empty(), empty(), empty());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> ObjectProvider<T> empty() {
+        return (ObjectProvider<T>) new ObjectProvider<Object>() {
+            @Override public Object getObject(Object... args) { return null; }
+            @Override public Object getObject() { return null; }
+            @Override public Object getIfAvailable() { return null; }
+            @Override public Object getIfUnique() { return null; }
+        };
     }
 
     @Test
@@ -130,7 +143,7 @@ class AiCallTemplateTest {
     }
 
     @Test
-    void chatStream_isReservedForPhase3() {
+    void chatStream_errorsWhenWebClientUnavailable() {
         AiCallTemplate t = template();
         ChatRequest req = ChatRequest.builder()
                 .feature("consult")
@@ -138,8 +151,10 @@ class AiCallTemplateTest {
                 .messages(List.of(ChatMessage.text("user", "x")))
                 .build();
 
-        assertThatThrownBy(() -> t.chatStream(req))
-                .isInstanceOf(UnsupportedOperationException.class);
+        // No WebClient provider in this test wiring → first signal must be an error.
+        assertThatThrownBy(() -> t.chatStream(req).blockFirst())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("aiWebClient");
     }
 
     private static RestClientResponseException httpError(HttpStatusCode status) {

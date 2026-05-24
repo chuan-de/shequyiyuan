@@ -1,0 +1,32 @@
+# Phase 3 community AI consult guardrail blocklist.
+# Format: <category>|<keyword>
+# Categories: off_topic, jailbreak
+# Matching is case-insensitive substring on the trimmed user message.
+# Hot-reload: TODO (Phase 4) — currently loaded once at startup.
+
+off_topic|天气
+off_topic|股票
+off_topic|新闻
+off_topic|今天日期
+off_topic|今天几号
+off_topic|今天星期
+off_topic|写代码
+off_topic|代码
+off_topic|翻译
+off_topic|英文翻译
+off_topic|歌词
+off_topic|笑话
+off_topic|彩票
+off_topic|赌博
+jailbreak|忽略前面
+jailbreak|忽略以上
+jailbreak|忽略之前
+jailbreak|忽略系统
+jailbreak|ignore previous
+jailbreak|ignore the above
+jailbreak|system prompt
+jailbreak|你是一个
+jailbreak|你现在是
+jailbreak|越狱
+jailbreak|jailbreak
+jailbreak|disregard previous

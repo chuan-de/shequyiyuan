@@ -17,7 +17,10 @@ export const API_ROUTES = {
   departments: '/api/v1/departments',
   aiVisionParseMedicalRecord: '/api/v1/ai/vision/parse-medical-record',
   aiPatientAsk: (patientId: number | string) => `/api/v1/ai/patient/${patientId}/ask`,
-  aiPatientConsent: (patientId: number | string) => `/api/v1/ai/patient/${patientId}/consent`
+  aiPatientConsent: (patientId: number | string) => `/api/v1/ai/patient/${patientId}/consent`,
+  aiConsultSessions: '/api/v1/ai/consult/sessions',
+  aiConsultSession: (id: number | string) => `/api/v1/ai/consult/sessions/${id}`,
+  aiConsultSessionMessages: (id: number | string) => `/api/v1/ai/consult/sessions/${id}/messages`
 } as const;
 
 export type LoginPayload = { username: string; password: string };
@@ -128,6 +131,45 @@ export type AskPatientAiRequest = { question: string };
 
 /** Server-side error code when patient hasn't granted AI consent yet. */
 export const AI_CONSENT_REQUIRED_CODE = 'AI_CONSENT_REQUIRED';
+
+/**
+ * Community AI consult session (Phase 3). One thread per row in the left rail
+ * on /ai-consult. {@code messageCount} is provided by the list endpoint so we
+ * can render the badge without a separate fetch.
+ */
+export type AiConsultSessionSummary = {
+  id: number;
+  title: string;
+  updatedAt: string;
+  createdAt: string;
+  messageCount: number;
+};
+
+/** One turn in a consult thread. Role is one of system / user / assistant. */
+export type AiConsultMessage = {
+  id: number;
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  tokensIn: number | null;
+  tokensOut: number | null;
+  model: string | null;
+  status: 'completed' | 'failed' | 'refused_by_guardrail';
+  createdAt: string;
+};
+
+export type AiConsultSessionDetail = {
+  id: number;
+  title: string;
+  updatedAt: string;
+  createdAt: string;
+  messages: AiConsultMessage[];
+};
+
+/** One SSE frame emitted by POST /api/v1/ai/consult/sessions/{id}/messages. */
+export type AiConsultStreamEvent =
+  | { delta: string }
+  | { error: string }
+  | { done: true; messageId: number; tokensIn: number; tokensOut: number; refused?: boolean; failed?: boolean };
 
 export const errorCodeMessages: Record<string, string> = {
   VALIDATION_ERROR: 'Invalid request payload',

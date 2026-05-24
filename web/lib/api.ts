@@ -1,5 +1,5 @@
-import { API_ROUTES, AI_CONSENT_REQUIRED_CODE, type AiVisionRequest, type AiVisionResponse, type ApiErrorResponse, type ApiResponse, type AskPatientAiResponse, type AuthResponse, type CurrentUserResponse, type DictionaryItemResponse, type DictionaryResponse, type EntityRecord, errorCodeMessages, type HealthResponse, type LoginPayload, type RegisterPayload, type StatusChangeRequest, type StatusManagedRoute } from './api-contract';
-export type { EntityRecord, CurrentUserResponse, DictionaryItemResponse, DictionaryResponse, AiVisionResponse, MedicalRecordFields, AskPatientAiResponse, AiPatientCitation } from './api-contract';
+import { API_ROUTES, AI_CONSENT_REQUIRED_CODE, type AiConsultSessionDetail, type AiConsultSessionSummary, type AiConsultStreamEvent, type AiVisionRequest, type AiVisionResponse, type ApiErrorResponse, type ApiResponse, type AskPatientAiResponse, type AuthResponse, type CurrentUserResponse, type DictionaryItemResponse, type DictionaryResponse, type EntityRecord, errorCodeMessages, type HealthResponse, type LoginPayload, type RegisterPayload, type StatusChangeRequest, type StatusManagedRoute } from './api-contract';
+export type { EntityRecord, CurrentUserResponse, DictionaryItemResponse, DictionaryResponse, AiVisionResponse, MedicalRecordFields, AskPatientAiResponse, AiPatientCitation, AiConsultMessage, AiConsultSessionDetail, AiConsultSessionSummary, AiConsultStreamEvent } from './api-contract';
 export { AI_CONSENT_REQUIRED_CODE } from './api-contract';
 
 /**
@@ -205,6 +205,170 @@ export async function grantAiConsent(
     throw await parseError(response);
   }
   return (await response.json() as ApiResponse<{ consentedAt: string }>).data;
+}
+
+// ---------------------------------------------------------------------------
+// Community AI consult (Phase 3) — session CRUD + SSE streaming chat.
+// ---------------------------------------------------------------------------
+
+/** List the caller's consult sessions (paginated, most-recent first). */
+export async function listConsultSessions(
+  token: string,
+  query: { page?: number; size?: number } = {}
+): Promise<PageResponse<AiConsultSessionSummary>> {
+  const p = new URLSearchParams();
+  if (query.page !== undefined) p.set('page', String(query.page));
+  if (query.size !== undefined) p.set('size', String(query.size));
+  return unwrapResponse(await apiFetch(`${API_ROUTES.aiConsultSessions}?${p.toString()}`, {
+    headers: authHeader(token), cache: 'no-store',
+  }));
+}
+
+/** Create a new session. Title defaults server-side to "新对话". */
+export async function createConsultSession(token: string, title?: string): Promise<AiConsultSessionSummary> {
+  return unwrapResponse(await apiFetch(API_ROUTES.aiConsultSessions, {
+    method: 'POST',
+    headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify(title ? { title } : {}),
+  }));
+}
+
+/** Fetch a single session with full message history (caller must own it). */
+export async function getConsultSession(token: string, id: number): Promise<AiConsultSessionDetail> {
+  return unwrapResponse(await apiFetch(API_ROUTES.aiConsultSession(id), {
+    headers: authHeader(token), cache: 'no-store',
+  }));
+}
+
+/** Rename a session. Server rejects empty / >200 chars with 400. */
+export async function renameConsultSession(
+  token: string, id: number, title: string
+): Promise<AiConsultSessionSummary> {
+  return unwrapResponse(await apiFetch(API_ROUTES.aiConsultSession(id), {
+    method: 'PATCH',
+    headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  }));
+}
+
+/** Delete a session and all its messages (CASCADE in V43). */
+export async function deleteConsultSession(token: string, id: number): Promise<void> {
+  await unwrapResponse(await apiFetch(API_ROUTES.aiConsultSession(id), {
+    method: 'DELETE', headers: authHeader(token),
+  }));
+}
+
+/**
+ * Stream an assistant reply for one new user message. The server returns
+ * `text/event-stream`; we parse the raw bytes with TextDecoder rather than
+ * EventSource so we can attach the Bearer token (EventSource has no header API)
+ * and reuse our generic auth refresh logic.
+ *
+ * Callbacks:
+ * - {@code onChunk(delta)}  — fires for every {"delta": "..."} frame.
+ * - {@code onDone(meta)}    — fires once when the stream completes normally;
+ *                              {@code meta.failed} / {@code meta.refused} flag
+ *                              guardrail / upstream errors.
+ * - {@code onError(err)}    — fires on network failure or HTTP non-2xx before
+ *                              the stream began. NOT called for mid-stream
+ *                              errors signalled via {@code onDone({failed:true})}.
+ */
+export async function streamConsultMessage(
+  token: string,
+  sessionId: number,
+  content: string,
+  callbacks: {
+    onChunk: (delta: string) => void;
+    onDone: (meta: { messageId: number; tokensIn: number; tokensOut: number; refused?: boolean; failed?: boolean }) => void;
+    onError: (err: Error) => void;
+    signal?: AbortSignal;
+  }
+): Promise<void> {
+  const url = `${API_BASE_URL}${API_ROUTES.aiConsultSessionMessages(sessionId)}`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+        [TRACE_ID_HEADER]: generateTraceId(),
+      },
+      body: JSON.stringify({ content }),
+      signal: callbacks.signal,
+    });
+  } catch (err) {
+    callbacks.onError(err instanceof Error ? err : new Error(String(err)));
+    return;
+  }
+  applyAuthResponse(response, url);
+
+  if (!response.ok) {
+    if (response.status === 401) { callbacks.onError(new Error('登录已过期，请重新登录')); return; }
+    if (response.status === 403) { callbacks.onError(new Error('当前账号无社区 AI 问诊权限（ai:consult）')); return; }
+    if (response.status === 404) { callbacks.onError(new Error('会话不存在或无权访问')); return; }
+    if (response.status === 429) {
+      let detail = '请稍后重试';
+      try {
+        const body = await response.json();
+        if (body?.reason === 'qpm') detail = '调用太频繁，请稍候再试';
+        else if (body?.reason === 'daily-token-budget') detail = '今日 AI 配额已用尽，请明天再试';
+      } catch { /* ignore */ }
+      callbacks.onError(new Error('AI 调用频率超限：' + detail));
+      return;
+    }
+    if (response.status >= 500) { callbacks.onError(new Error('AI 服务暂时不可用，请稍后再试')); return; }
+    callbacks.onError(await parseError(response));
+    return;
+  }
+
+  const body = response.body;
+  if (!body) { callbacks.onError(new Error('响应没有内容')); return; }
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE frames are separated by a blank line. Process every complete event
+      // and leave the trailing partial in buffer for the next read.
+      let sep = buffer.indexOf('\n\n');
+      while (sep !== -1) {
+        const rawEvent = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        sep = buffer.indexOf('\n\n');
+
+        for (const line of rawEvent.split('\n')) {
+          const trimmed = line.startsWith('data:') ? line.slice(5).trim() : line.trim();
+          if (!trimmed || trimmed.startsWith(':')) continue;
+          if (trimmed === '[DONE]') { return; }
+          let event: AiConsultStreamEvent;
+          try { event = JSON.parse(trimmed) as AiConsultStreamEvent; }
+          catch { continue; }
+          if ('done' in event && event.done) {
+            callbacks.onDone({
+              messageId: event.messageId,
+              tokensIn: event.tokensIn,
+              tokensOut: event.tokensOut,
+              refused: event.refused,
+              failed: event.failed,
+            });
+          } else if ('error' in event) {
+            callbacks.onChunk('\n[错误] ' + event.error);
+          } else if ('delta' in event) {
+            callbacks.onChunk(event.delta);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    callbacks.onError(err instanceof Error ? err : new Error(String(err)));
+  }
 }
 
 export async function changeEntityStatus(token: string, route: string, id: number, enabled: boolean): Promise<void> {
