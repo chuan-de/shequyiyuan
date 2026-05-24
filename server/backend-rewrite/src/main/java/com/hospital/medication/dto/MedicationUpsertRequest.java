@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import java.math.BigDecimal;
 
 public record MedicationUpsertRequest(
-        @NotBlank String code,
+        String code,
         @NotBlank String name,
         Long version,
         BigDecimal price,

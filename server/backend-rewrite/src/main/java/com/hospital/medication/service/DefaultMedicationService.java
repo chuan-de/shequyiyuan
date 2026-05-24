@@ -47,7 +47,10 @@ public class DefaultMedicationService implements MedicationService {
 
     @Override
     public Medication create(MedicationUpsertRequest request, String actor) {
-        Medication med = new Medication(null, request.code(), request.name(), MedicationStatus.ENABLED, request.version());
+        String code = (request.code() == null || request.code().isBlank())
+                ? generateCode()
+                : request.code();
+        Medication med = new Medication(null, code, request.name(), MedicationStatus.ENABLED, request.version());
         if (request.price() != null) med.setPrice(request.price());
         if (request.stock() != null) med.setStock(request.stock());
         med.setMainEffect(request.mainEffect());
@@ -59,13 +62,24 @@ public class DefaultMedicationService implements MedicationService {
     @Override
     public Medication update(Long id, MedicationUpsertRequest request, String actor) {
         Medication current = detail(id);
-        current.setCode(request.code());
         current.setName(request.name());
         if (request.price() != null) current.setPrice(request.price());
         current.setMainEffect(request.mainEffect());
         current.setSideEffect(request.sideEffect());
         current.setDetail(request.detail());
         return repository.save(current);
+    }
+
+    private String generateCode() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        String stamp = now.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        int suffix = (int) (Math.random() * 900 + 100);
+        for (int attempt = 0; attempt < 5; attempt++) {
+            String candidate = "YP" + stamp + suffix;
+            if (!repository.existsByCode(candidate)) return candidate;
+            suffix++;
+        }
+        throw new IllegalStateException("Failed to generate unique medication code");
     }
 
     @Override

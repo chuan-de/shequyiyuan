@@ -172,7 +172,6 @@ export const medicationsPageConfig: EntityPageConfig = {
     { key: 'sideEffect', title: '副作用' },
   ],
   formFields: [
-    { key: 'code', label: '药品编号', required: true, defaultValue: '' },
     { key: 'name', label: '药品名称', required: true, defaultValue: '' },
     { key: 'price', label: '药品价格', type: 'number', defaultValue: '0' },
     { key: 'stock', label: '药品库存', type: 'number', defaultValue: '0' },
@@ -197,8 +196,8 @@ export const medicationsPageConfig: EntityPageConfig = {
     },
   ],
   labelMap: { code: '药品编号', name: '药品名称', price: '药品价格', stock: '药品库存', mainEffect: '主要药效', sideEffect: '副作用', detail: '药品详情', enabled: '状态', createdAt: '创建时间' },
-  createPayload: (form) => ({ code: form.code, name: form.name, price: form.price ? Number(form.price) : 0, stock: form.stock ? Number(form.stock) : 0, mainEffect: form.mainEffect || undefined, sideEffect: form.sideEffect || undefined, detail: form.detail || undefined }),
-  updatePayload: (form) => ({ code: form.code, name: form.name, price: form.price ? Number(form.price) : 0, mainEffect: form.mainEffect || undefined, sideEffect: form.sideEffect || undefined, detail: form.detail || undefined }),
+  createPayload: (form) => ({ name: form.name, price: form.price ? Number(form.price) : 0, stock: form.stock ? Number(form.stock) : 0, mainEffect: form.mainEffect || undefined, sideEffect: form.sideEffect || undefined, detail: form.detail || undefined }),
+  updatePayload: (form) => ({ name: form.name, price: form.price ? Number(form.price) : 0, mainEffect: form.mainEffect || undefined, sideEffect: form.sideEffect || undefined, detail: form.detail || undefined }),
 };
 
 export const doctorPageConfig: EntityPageConfig = {
