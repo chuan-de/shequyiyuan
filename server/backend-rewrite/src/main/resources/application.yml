@@ -65,7 +65,12 @@ hospital:
     base-url: https://ark.cn-beijing.volces.com/api/v3
     api-key: ${HOSPITAL_AI_API_KEY:}
     chat-model: doubao-seed-2.0-lite
-    embedding-model: doubao-embedding-text-240715
+    # doubao-embedding-vision-250615 is the embedding model whitelisted on
+    # Volcano agentPlan. It returns 2048-dim vectors (V44 widened the column
+    # to match). doubao-embedding-text-* models (1024 dim) require a
+    # commercial-tier key and a corresponding embedding-dimension override.
+    embedding-model: doubao-embedding-vision-250615
+    embedding-dimension: 2048
     vision-model: doubao-seed-2.0-lite
     timeout-seconds: 60
     features:
