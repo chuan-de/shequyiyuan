@@ -1,6 +1,9 @@
 services:
   postgres:
-    image: postgres:18
+    # pgvector/pgvector:pg16 is the official pgvector image on PostgreSQL 16.
+    # Phase 2 (patient RAG) requires the `vector` extension — see Flyway V40.
+    # Data volume format is compatible with the prior plain postgres image.
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: hospital
       POSTGRES_USER: hospital

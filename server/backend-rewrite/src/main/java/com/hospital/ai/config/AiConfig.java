@@ -8,6 +8,7 @@ import org.springframework.boot.web.client.RestClientCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.web.client.RestClient;
 
 /**
@@ -20,6 +21,7 @@ import org.springframework.web.client.RestClient;
  */
 @Configuration
 @EnableConfigurationProperties(AiProperties.class)
+@EnableAsync
 @ConditionalOnProperty(prefix = "hospital.ai", name = "enabled", havingValue = "true")
 public class AiConfig {
 

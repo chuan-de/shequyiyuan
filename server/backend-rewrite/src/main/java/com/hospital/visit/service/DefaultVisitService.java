@@ -1,5 +1,6 @@
 package com.hospital.visit.service;
 
+import com.hospital.ai.ingestion.KnowledgeIngestRequestedEvent;
 import com.hospital.common.NotFoundException;
 import com.hospital.visit.domain.VisitRecord;
 import com.hospital.visit.dto.VisitCreateRequest;
@@ -11,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,10 +32,14 @@ public class DefaultVisitService implements VisitService {
 
     private final VisitRepository visitRepo;
     private final JdbcClient jdbcClient;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public DefaultVisitService(VisitRepository visitRepo, JdbcClient jdbcClient) {
+    public DefaultVisitService(VisitRepository visitRepo,
+                               JdbcClient jdbcClient,
+                               ApplicationEventPublisher eventPublisher) {
         this.visitRepo = visitRepo;
         this.jdbcClient = jdbcClient;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -71,6 +77,7 @@ public class DefaultVisitService implements VisitService {
         VisitRecord record = new VisitRecord(req.patientId(), visitNumber, req.fee(),
             req.keshiTypes(), req.visitDate(), req.registrationNotes(), req.visitContent());
         record = visitRepo.save(record);
+        eventPublisher.publishEvent(KnowledgeIngestRequestedEvent.visit(record.getId()));
         return detail(record.getId());
     }
 
@@ -84,6 +91,7 @@ public class DefaultVisitService implements VisitService {
         record.setRegistrationNotes(req.registrationNotes());
         record.setVisitContent(req.visitContent());
         visitRepo.save(record);
+        eventPublisher.publishEvent(KnowledgeIngestRequestedEvent.visit(id));
         return detail(id);
     }
 

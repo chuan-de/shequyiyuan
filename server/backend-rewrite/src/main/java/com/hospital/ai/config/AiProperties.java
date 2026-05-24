@@ -18,6 +18,13 @@ public class AiProperties {
     private String apiKey = "";
     private String chatModel = "doubao-seed-2.0-lite";
     private String embeddingModel = "doubao-embedding-text-240715";
+    /**
+     * Dimension of the embedding vectors. MUST match the {@code VECTOR(N)}
+     * column in Flyway V41 (currently 1024). If the upstream model returns a
+     * different size, {@code DoubaoEmbeddingService} fails fast so we notice
+     * before storing mismatched rows.
+     */
+    private int embeddingDimension = 1024;
     private String visionModel = "doubao-seed-2.0-lite";
     private int timeoutSeconds = 60;
 
@@ -41,6 +48,9 @@ public class AiProperties {
 
     public String getEmbeddingModel() { return embeddingModel; }
     public void setEmbeddingModel(String embeddingModel) { this.embeddingModel = embeddingModel; }
+
+    public int getEmbeddingDimension() { return embeddingDimension; }
+    public void setEmbeddingDimension(int embeddingDimension) { this.embeddingDimension = embeddingDimension; }
 
     public String getVisionModel() { return visionModel; }
     public void setVisionModel(String visionModel) { this.visionModel = visionModel; }

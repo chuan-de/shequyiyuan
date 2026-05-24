@@ -1,11 +1,13 @@
 package com.hospital.medicalrecord.service;
 
+import com.hospital.ai.ingestion.KnowledgeIngestRequestedEvent;
 import com.hospital.medicalrecord.domain.MedicalRecord;
 import com.hospital.medicalrecord.domain.MedicalRecordStatus;
 import com.hospital.medicalrecord.dto.MedicalRecordUpsertRequest;
 import com.hospital.common.NotFoundException;
 import com.hospital.medicalrecord.repository.MedicalRecordRepository;
 import java.util.List;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,8 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class DefaultMedicalRecordService implements MedicalRecordService {
     private final MedicalRecordRepository repository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public DefaultMedicalRecordService(MedicalRecordRepository repository) { this.repository = repository; }
+    public DefaultMedicalRecordService(MedicalRecordRepository repository,
+                                       ApplicationEventPublisher eventPublisher) {
+        this.repository = repository;
+        this.eventPublisher = eventPublisher;
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -38,25 +45,29 @@ public class DefaultMedicalRecordService implements MedicalRecordService {
         String caseNumber = (r.caseNumber() == null || r.caseNumber().isBlank())
                 ? generateCaseNumber()
                 : r.caseNumber();
-        return repository.save(new MedicalRecord(null, r.doctorId(), r.doctorUuidNumber(), r.doctorName(),
+        MedicalRecord saved = repository.save(new MedicalRecord(null, r.doctorId(), r.doctorUuidNumber(), r.doctorName(),
                 r.doctorPhone(), r.doctorIdNumber(), r.doctorEmail(),
                 r.patientId(), r.patientName(), r.patientPhone(), r.patientIdNumber(), r.patientEmail(),
                 caseNumber, r.caseName(), r.conditionDesc(),
                 r.examItems(), r.examResults(),
                 r.prescriptionItems(), r.attachments(), r.recordDate(),
                 MedicalRecordStatus.DRAFT, r.version()));
+        eventPublisher.publishEvent(KnowledgeIngestRequestedEvent.medicalRecord(saved.getId()));
+        return saved;
     }
 
     @Override
     public MedicalRecord update(Long id, MedicalRecordUpsertRequest r, String actor) {
         MedicalRecord c = detail(id);
-        return repository.save(new MedicalRecord(c.getId(), r.doctorId(), r.doctorUuidNumber(), r.doctorName(),
+        MedicalRecord saved = repository.save(new MedicalRecord(c.getId(), r.doctorId(), r.doctorUuidNumber(), r.doctorName(),
                 r.doctorPhone(), r.doctorIdNumber(), r.doctorEmail(),
                 r.patientId(), r.patientName(), r.patientPhone(), r.patientIdNumber(), r.patientEmail(),
                 c.getCaseNumber(), r.caseName(), r.conditionDesc(),
                 r.examItems(), r.examResults(),
                 r.prescriptionItems(), r.attachments(), r.recordDate(),
                 c.getStatus(), c.getVersion()));
+        eventPublisher.publishEvent(KnowledgeIngestRequestedEvent.medicalRecord(saved.getId()));
+        return saved;
     }
 
     private String generateCaseNumber() {

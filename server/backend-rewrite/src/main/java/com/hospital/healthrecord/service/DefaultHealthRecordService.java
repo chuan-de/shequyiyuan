@@ -1,5 +1,6 @@
 package com.hospital.healthrecord.service;
 
+import com.hospital.ai.ingestion.KnowledgeIngestRequestedEvent;
 import com.hospital.healthrecord.domain.HealthRecord;
 import com.hospital.healthrecord.domain.HealthRecordStatus;
 import com.hospital.healthrecord.dto.HealthRecordUpsertRequest;
@@ -7,6 +8,7 @@ import com.hospital.common.NotFoundException;
 import com.hospital.healthrecord.repository.HealthRecordRepository;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,8 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class DefaultHealthRecordService implements HealthRecordService {
     private final HealthRecordRepository repository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public DefaultHealthRecordService(HealthRecordRepository repository) { this.repository = repository; }
+    public DefaultHealthRecordService(HealthRecordRepository repository,
+                                      ApplicationEventPublisher eventPublisher) {
+        this.repository = repository;
+        this.eventPublisher = eventPublisher;
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -36,19 +43,23 @@ public class DefaultHealthRecordService implements HealthRecordService {
 
     @Override
     public HealthRecord create(HealthRecordUpsertRequest r, String actor) {
-        return repository.save(new HealthRecord(null, r.patientId(), r.patientName(), r.patientPhone(),
+        HealthRecord saved = repository.save(new HealthRecord(null, r.patientId(), r.patientName(), r.patientPhone(),
                 r.patientIdNumber(), r.patientEmail(), r.title(), r.otherMembers(),
                 r.unitTypes(), r.recordedAt() != null ? r.recordedAt() : Instant.now(),
                 r.content(), HealthRecordStatus.DRAFT, r.version()));
+        eventPublisher.publishEvent(KnowledgeIngestRequestedEvent.healthRecord(saved.getId()));
+        return saved;
     }
 
     @Override
     public HealthRecord update(Long id, HealthRecordUpsertRequest r, String actor) {
         HealthRecord c = detail(id);
-        return repository.save(new HealthRecord(c.getId(), r.patientId(), r.patientName(), r.patientPhone(),
+        HealthRecord saved = repository.save(new HealthRecord(c.getId(), r.patientId(), r.patientName(), r.patientPhone(),
                 r.patientIdNumber(), r.patientEmail(), r.title(), r.otherMembers(),
                 r.unitTypes(), r.recordedAt() != null ? r.recordedAt() : c.getRecordedAt(),
                 r.content(), c.getStatus(), c.getVersion()));
+        eventPublisher.publishEvent(KnowledgeIngestRequestedEvent.healthRecord(saved.getId()));
+        return saved;
     }
 
     @Override
