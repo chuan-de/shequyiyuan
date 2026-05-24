@@ -2,6 +2,7 @@ package com.hospital.common;
 
 import java.util.Map;
 
+import com.hospital.ai.common.AiConsentRequiredException;
 import com.hospital.ai.common.AiRateLimitException;
 
 import org.springframework.http.HttpStatus;
@@ -37,6 +38,15 @@ public class ApiExceptionHandler {
             .body(Map.of(
                 "message", ex.getMessage(),
                 "reason", ex.getReason()
+            ));
+    }
+
+    @ExceptionHandler(AiConsentRequiredException.class)
+    public ResponseEntity<Map<String, Object>> handleAiConsentRequired(AiConsentRequiredException ex) {
+        return ResponseEntity.status(HttpStatus.PRECONDITION_REQUIRED)
+            .body(Map.of(
+                "code", AiConsentRequiredException.ERROR_CODE,
+                "message", ex.getMessage()
             ));
     }
 }

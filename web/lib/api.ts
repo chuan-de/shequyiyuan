@@ -1,5 +1,19 @@
-import { API_ROUTES, type AiVisionRequest, type AiVisionResponse, type ApiErrorResponse, type ApiResponse, type AuthResponse, type CurrentUserResponse, type DictionaryItemResponse, type DictionaryResponse, type EntityRecord, errorCodeMessages, type HealthResponse, type LoginPayload, type RegisterPayload, type StatusChangeRequest, type StatusManagedRoute } from './api-contract';
-export type { EntityRecord, CurrentUserResponse, DictionaryItemResponse, DictionaryResponse, AiVisionResponse, MedicalRecordFields } from './api-contract';
+import { API_ROUTES, AI_CONSENT_REQUIRED_CODE, type AiVisionRequest, type AiVisionResponse, type ApiErrorResponse, type ApiResponse, type AskPatientAiResponse, type AuthResponse, type CurrentUserResponse, type DictionaryItemResponse, type DictionaryResponse, type EntityRecord, errorCodeMessages, type HealthResponse, type LoginPayload, type RegisterPayload, type StatusChangeRequest, type StatusManagedRoute } from './api-contract';
+export type { EntityRecord, CurrentUserResponse, DictionaryItemResponse, DictionaryResponse, AiVisionResponse, MedicalRecordFields, AskPatientAiResponse, AiPatientCitation } from './api-contract';
+export { AI_CONSENT_REQUIRED_CODE } from './api-contract';
+
+/**
+ * Thrown by {@link askPatientAi} when the backend returns HTTP 412 with
+ * {@code code: 'AI_CONSENT_REQUIRED'}. The patient detail page catches this
+ * specifically and pops the consent modal instead of showing a generic error.
+ */
+export class AiConsentRequiredError extends Error {
+  readonly code = AI_CONSENT_REQUIRED_CODE;
+  constructor(message = '患者尚未授权 AI 智能辅助服务') {
+    super(message);
+    this.name = 'AiConsentRequiredError';
+  }
+}
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 const TRACE_ID_HEADER = 'X-Trace-Id';
@@ -112,6 +126,85 @@ export async function parseMedicalRecordPhoto(token: string, payload: AiVisionRe
     throw await parseError(response);
   }
   return (await response.json() as ApiResponse<AiVisionResponse>).data;
+}
+
+/**
+ * POST /api/v1/ai/patient/{patientId}/ask — ask a natural-language question
+ * about ONE patient's records. The server enforces:
+ *
+ * - ai:patient-rag permission (403 if missing),
+ * - row-level access (doctor/admin OR the patient themselves; 403 otherwise),
+ * - prior consent on patient_profile.ai_consent_at (412 + AI_CONSENT_REQUIRED
+ *   when null — translated to {@link AiConsentRequiredError} below so the UI
+ *   can pop the consent modal without parsing strings).
+ *
+ * 429 maps to a friendly message; everything else falls through to
+ * {@link parseError} for the generic Chinese banner.
+ */
+export async function askPatientAi(
+  token: string,
+  patientId: number | string,
+  question: string
+): Promise<AskPatientAiResponse> {
+  const response = await apiFetch(API_ROUTES.aiPatientAsk(patientId), {
+    method: 'POST',
+    headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question }),
+  });
+  if (!response.ok) {
+    if (response.status === 412) {
+      // Distinguish "no consent yet" so the UI can pop the modal silently.
+      let message = '患者尚未授权 AI 智能辅助服务';
+      try {
+        const body = await response.clone().json();
+        if (body?.code === AI_CONSENT_REQUIRED_CODE) {
+          if (body?.message) message = body.message;
+          throw new AiConsentRequiredError(message);
+        }
+      } catch (err) {
+        if (err instanceof AiConsentRequiredError) throw err;
+        // Fallthrough to generic parsing if body isn't the expected shape.
+      }
+    }
+    if (response.status === 401) throw new Error('登录已过期，请重新登录');
+    if (response.status === 403) throw new Error('当前账号无 AI 问询权限（ai:patient-rag）');
+    if (response.status === 404) throw new Error('患者不存在');
+    if (response.status === 429) {
+      let detail = '请稍后重试';
+      try {
+        const body = await response.json();
+        if (body?.reason === 'qpm') detail = '调用太频繁，请稍候再试';
+        else if (body?.reason === 'daily-token-budget') detail = '今日 AI 配额已用尽，请明天再试';
+      } catch { /* ignore */ }
+      throw new Error('AI 调用频率超限：' + detail);
+    }
+    if (response.status >= 500) throw new Error('AI 服务暂时不可用，请稍后再试');
+    throw await parseError(response);
+  }
+  return (await response.json() as ApiResponse<AskPatientAiResponse>).data;
+}
+
+/**
+ * POST /api/v1/ai/patient/{patientId}/consent — mark the patient as having
+ * accepted AI processing. Only the patient themselves (matched on
+ * patient_profile.user_id) or an admin can call this; the server returns 403
+ * to anyone else even with ai:patient-rag.
+ */
+export async function grantAiConsent(
+  token: string,
+  patientId: number | string
+): Promise<{ consentedAt: string }> {
+  const response = await apiFetch(API_ROUTES.aiPatientConsent(patientId), {
+    method: 'POST',
+    headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) {
+    if (response.status === 401) throw new Error('登录已过期，请重新登录');
+    if (response.status === 403) throw new Error('仅患者本人或管理员可签署该授权');
+    if (response.status === 404) throw new Error('患者不存在');
+    throw await parseError(response);
+  }
+  return (await response.json() as ApiResponse<{ consentedAt: string }>).data;
 }
 
 export async function changeEntityStatus(token: string, route: string, id: number, enabled: boolean): Promise<void> {

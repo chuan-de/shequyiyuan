@@ -15,7 +15,9 @@ export const API_ROUTES = {
   patients: '/api/v1/patients',
   receptions: '/api/v1/receptions',
   departments: '/api/v1/departments',
-  aiVisionParseMedicalRecord: '/api/v1/ai/vision/parse-medical-record'
+  aiVisionParseMedicalRecord: '/api/v1/ai/vision/parse-medical-record',
+  aiPatientAsk: (patientId: number | string) => `/api/v1/ai/patient/${patientId}/ask`,
+  aiPatientConsent: (patientId: number | string) => `/api/v1/ai/patient/${patientId}/consent`
 } as const;
 
 export type LoginPayload = { username: string; password: string };
@@ -97,6 +99,35 @@ export type AiVisionResponse = {
 export type AiVisionRequest =
   | { photoId: string; prompt?: string }
   | { base64: string; contentType: string; prompt?: string };
+
+/**
+ * One source-document slice the RAG retrieval surfaced as evidence for an
+ * answer. UI renders these as footnotes ([#1] [#2] …) with a side drawer
+ * that shows the snippet + a deep-link to the original record.
+ */
+export type AiPatientCitation = {
+  chunkId: number;
+  sourceType: 'medical_record' | 'health_record' | 'visit';
+  sourceId: number;
+  fieldKey: string;
+  snippet: string;
+  sourceDate: string | null;
+  similarity: number | null;
+};
+
+/** Response shape from POST /api/v1/ai/patient/{id}/ask. */
+export type AskPatientAiResponse = {
+  answer: string;
+  citations: AiPatientCitation[];
+  tokensIn: number;
+  tokensOut: number;
+  latencyMs: number;
+};
+
+export type AskPatientAiRequest = { question: string };
+
+/** Server-side error code when patient hasn't granted AI consent yet. */
+export const AI_CONSENT_REQUIRED_CODE = 'AI_CONSENT_REQUIRED';
 
 export const errorCodeMessages: Record<string, string> = {
   VALIDATION_ERROR: 'Invalid request payload',

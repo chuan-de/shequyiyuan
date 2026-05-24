@@ -86,6 +86,19 @@ export const patientsPageConfig: EntityPageConfig = {
       permission: 'patients:reset-password',
       onClick: (row, helpers) => resetPasswordAction(row, helpers, '/api/v1/patients'),
     },
+    {
+      // Entry point into the AI-augmented patient detail page (Phase 2.10).
+      // Permission gating: only users with ai:patient-rag see the action; the
+      // detail page double-checks before rendering the AI panel.
+      key: 'aiAsk',
+      label: 'AI 问询',
+      permission: 'ai:patient-rag',
+      onClick: (row) => {
+        if (typeof window !== 'undefined') {
+          window.location.assign(`/patients/${row.id}`);
+        }
+      },
+    },
   ],
   createPayload: (form) => ({
     username: form.username,
