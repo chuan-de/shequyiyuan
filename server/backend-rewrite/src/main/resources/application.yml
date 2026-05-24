@@ -7,9 +7,22 @@ spring:
   # flags disable the model auto-config so a missing OPENAI key never breaks
   # boot. Phase 2 will revisit if/when we adopt Spring AI's VectorStore.
   ai:
+    # We do NOT use Spring AI's auto-wired model beans — AiCallTemplate owns the
+    # HTTP path (forces temperature=1, custom retry, audit-friendly). Disable
+    # every OpenAI model category so a missing OPENAI key never breaks boot.
     model:
       chat: none
       embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+    openai:
+      # Spring AI's OpenAI starter still requires *some* key value during property
+      # binding even when the model beans are disabled. Provide a harmless
+      # placeholder; we never actually call OpenAI through this starter.
+      api-key: ${SPRING_AI_OPENAI_API_KEY:disabled-placeholder}
   datasource:
     url: jdbc:postgresql://localhost:5432/hospital
     username: hospital
