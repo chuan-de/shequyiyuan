@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { askPatientAi, AiConsentRequiredError, type AiPatientCitation, type AskPatientAiResponse } from '@/lib/api';
 import { AiConsentModal } from './ai-consent-modal';
 
@@ -33,6 +33,39 @@ function formatSourceLabel(c: AiPatientCitation): string {
     visit: '就诊记录',
   };
   return `${map[c.sourceType]} #${c.sourceId}（${c.fieldKey}）`;
+}
+
+/**
+ * Splits an assistant reply that contains `[#N]` markers into a mix of plain
+ * text spans and inline citation buttons. The LLM is instructed to emit
+ * `[#N]` to refer to the Nth retrieved chunk (1-indexed). Markers whose
+ * index is out of range fall back to plain text so we never lose content.
+ */
+function renderAssistantText(
+  text: string,
+  citations: AiPatientCitation[],
+  onCitationClick: (c: AiPatientCitation) => void,
+) {
+  // split() with a capturing group keeps the delimiters in the array.
+  const parts = text.split(/(\[#\d+\])/g);
+  return parts.map((part, i) => {
+    const match = /^\[#(\d+)\]$/.exec(part);
+    if (!match) return <Fragment key={i}>{part}</Fragment>;
+    const idx = Number(match[1]) - 1;
+    const citation = citations[idx];
+    if (!citation) return <Fragment key={i}>{part}</Fragment>;
+    return (
+      <button
+        key={i}
+        type="button"
+        onClick={() => onCitationClick(citation)}
+        className="mx-0.5 inline-flex items-baseline rounded bg-blue-100 px-1 text-[11px] font-mono text-blue-700 align-baseline hover:bg-blue-200"
+        title={citation.snippet}
+      >
+        [#{idx + 1}]
+      </button>
+    );
+  });
 }
 
 function deepLinkFor(c: AiPatientCitation): string | null {
@@ -122,7 +155,7 @@ export function PatientAiAskPanel({ token, patientId, patientName }: PatientAiAs
             <div key={idx} className="flex justify-start">
               <div className="max-w-[85%] space-y-2">
                 <div className="rounded-lg bg-slate-100 px-3 py-2 text-sm whitespace-pre-wrap text-slate-800">
-                  {turn.text}
+                  {renderAssistantText(turn.text, turn.citations, setDrawerCitation)}
                 </div>
                 {turn.citations.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1 text-xs text-slate-500">
