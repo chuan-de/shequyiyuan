@@ -107,7 +107,8 @@ public class DefaultReceptionService implements ReceptionService {
         profile.setSexTypes(request.sexTypes());
         profile.setPhone(request.phone());
         profile.setEmail(request.email());
-        profileRepo.save(profile);
+        // detail() 走 JdbcClient 直读数据库，必须先 flush JPA 脏数据。
+        profileRepo.saveAndFlush(profile);
 
         return detail(id);
     }

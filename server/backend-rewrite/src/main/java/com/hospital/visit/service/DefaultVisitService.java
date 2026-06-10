@@ -3,6 +3,7 @@ package com.hospital.visit.service;
 import com.hospital.ai.ingestion.KnowledgeIngestRequestedEvent;
 import com.hospital.common.NotFoundException;
 import com.hospital.common.PageResponse;
+import com.hospital.patient.repository.PatientProfileRepository;
 import com.hospital.visit.domain.VisitRecord;
 import com.hospital.visit.dto.VisitCreateRequest;
 import com.hospital.visit.dto.VisitResponse;
@@ -34,13 +35,16 @@ public class DefaultVisitService implements VisitService {
         """;
 
     private final VisitRepository visitRepo;
+    private final PatientProfileRepository patientRepo;
     private final JdbcClient jdbcClient;
     private final ApplicationEventPublisher eventPublisher;
 
     public DefaultVisitService(VisitRepository visitRepo,
+                               PatientProfileRepository patientRepo,
                                JdbcClient jdbcClient,
                                ApplicationEventPublisher eventPublisher) {
         this.visitRepo = visitRepo;
+        this.patientRepo = patientRepo;
         this.jdbcClient = jdbcClient;
         this.eventPublisher = eventPublisher;
     }
@@ -88,6 +92,8 @@ public class DefaultVisitService implements VisitService {
 
     @Override
     public VisitResponse create(VisitCreateRequest req, String actor) {
+        if (!patientRepo.existsById(req.patientId()))
+            throw new NotFoundException("Patient not found: " + req.patientId());
         String visitNumber = (req.visitNumber() == null || req.visitNumber().isBlank())
             ? generateVisitNumber()
             : req.visitNumber();

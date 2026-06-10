@@ -86,7 +86,8 @@ public class DefaultFamilyDoctorService implements FamilyDoctorService {
         profile.setSexTypes(req.sexTypes());
         profile.setPhone(req.phone());
         profile.setEmail(req.email());
-        profileRepo.save(profile);
+        // detail() 走 JdbcClient 直读数据库，必须先 flush JPA 脏数据。
+        profileRepo.saveAndFlush(profile);
         return detail(id);
     }
 

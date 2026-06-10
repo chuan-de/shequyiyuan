@@ -72,7 +72,8 @@ public class DefaultDepartmentService implements DepartmentService {
         dept.setHeadPerson(req.headPerson());
         dept.setPhone(req.phone());
         dept.setDeptTypes(req.deptTypes());
-        departmentRepo.save(dept);
+        // detail() 走 JdbcClient 直读数据库，必须先 flush JPA 脏数据。
+        departmentRepo.saveAndFlush(dept);
         return detail(id);
     }
 
