@@ -2,10 +2,13 @@ package com.hospital.ai.rag;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import com.hospital.ai.audit.AiAuditLog;
@@ -76,6 +79,8 @@ public class PatientRagService {
     static final int TOP_K = 5;
     static final String FEATURE = "patient-rag";
     static final String FEATURE_RETRIEVAL = "patient-rag-retrieval";
+    /** Marker the model emits when it actually cites a retrieved chunk. */
+    private static final Pattern CITATION_MARKER = Pattern.compile("\\[#\\d+\\]");
 
     private final JdbcClient jdbcClient;
     private final EmbeddingService embeddingService;
@@ -130,7 +135,7 @@ public class PatientRagService {
         List<Citation> citations = retrieve(patientId, questionVector);
 
         String systemPrompt = buildSystemPrompt();
-        String userPrompt = buildUserPrompt(question, citations);
+        String userPrompt = buildUserPrompt(question, citations, buildPatientContextBlock(patientId));
         ChatResponse response = aiCallTemplate.chat(ChatRequest.builder()
                 .feature(FEATURE)
                 .model(properties.getChatModel())
@@ -143,7 +148,13 @@ public class PatientRagService {
 
         recordRetrievalAudit(callerUserId, question, citations);
 
-        return new RagAnswer(response.content(), citations, response.tokensIn(),
+        // 模型一个 [#编号] 都没引用（基础档案足以作答，或资料与问题无关）时
+        // 不向前端返回引用列表，避免"未找到相关信息"还挂着一排来源。
+        String content = response.content();
+        List<Citation> citedOnly = (content != null && CITATION_MARKER.matcher(content).find())
+                ? citations : List.of();
+
+        return new RagAnswer(content, citedOnly, response.tokensIn(),
                 response.tokensOut(), response.latencyMs());
     }
 
@@ -238,16 +249,101 @@ public class PatientRagService {
     static String buildSystemPrompt() {
         return """
                 你是一名社区医院的 AI 辅助医生助手。请严格遵守以下规则：
-                1. 只能依据用户消息中"患者历史片段"部分给出的资料作答；如果资料里没有相关内容，请直接回答"现有资料中未找到相关信息"，不要编造任何事实、药品、剂量或诊断。
+                1. 只能依据用户消息中"患者基础档案"（档案信息、近期随访指标、家庭医生签约）与"患者历史片段"（病历/就诊检索结果）两部分资料作答；如果资料里没有相关内容，请直接回答"现有资料中未找到相关信息"，不要编造任何事实、药品、剂量或诊断。
                 2. 回答务必使用中文，简洁、客观、专业；必要时分点列出。
-                3. 涉及到具体既往内容时，请用 [#编号] 的形式标注来源，编号对应资料编号。
+                3. 引用"患者历史片段"中的内容时，请用 [#编号] 的形式标注来源，编号对应片段编号；引用"患者基础档案"无需标注。若历史片段与问题无关，请不要输出任何 [#编号]。
                 4. 不要给出可能危及患者安全的具体用药建议；可以给出"建议线下复诊"等通用建议。
                 """;
     }
 
-    static String buildUserPrompt(String question, List<Citation> citations) {
+    /**
+     * 患者 360° 基础上下文：档案要点 + 近 5 次随访指标 + 生效签约。
+     * 这类信息小而常驻、随档案实时变化，直接注入 prompt 比向量化更可靠
+     * （无需重嵌入即可保证最新，也不会被相似度检索漏掉）。
+     */
+    String buildPatientContextBlock(Long patientId) {
         StringBuilder sb = new StringBuilder();
-        sb.append("患者历史片段（按相关度排序）：\n");
+        jdbcClient.sql("""
+                SELECT full_name, sex_types, birth_date, allergies, medical_history, address
+                FROM patient_profile WHERE id = :id
+                """)
+                .param("id", patientId)
+                .query((rs, n) -> {
+                    sb.append("姓名：").append(nullable(rs.getString("full_name"))).append('\n');
+                    Integer sex = rs.getObject("sex_types") != null ? rs.getInt("sex_types") : null;
+                    sb.append("性别：").append(sex == null ? "未知" : (sex == 1 ? "男" : sex == 2 ? "女" : String.valueOf(sex))).append('\n');
+                    java.sql.Date bd = rs.getDate("birth_date");
+                    if (bd != null) {
+                        LocalDate birth = bd.toLocalDate();
+                        sb.append("出生日期：").append(birth)
+                          .append("（").append(Period.between(birth, LocalDate.now()).getYears()).append(" 岁）\n");
+                    }
+                    appendIfPresent(sb, "过敏史", rs.getString("allergies"));
+                    appendIfPresent(sb, "既往病史", rs.getString("medical_history"));
+                    appendIfPresent(sb, "住址", rs.getString("address"));
+                    return null;
+                })
+                .optional();
+
+        jdbcClient.sql("""
+                SELECT fd.full_name AS doctor_name, c.service_package, c.signed_at, c.expires_at
+                FROM family_doctor_contract c
+                JOIN family_doctor_profile fd ON fd.id = c.family_doctor_id
+                WHERE c.patient_id = :id AND c.status = 'ACTIVE'
+                  AND (c.expires_at IS NULL OR c.expires_at >= CURRENT_DATE)
+                ORDER BY c.signed_at DESC LIMIT 1
+                """)
+                .param("id", patientId)
+                .query((rs, n) -> {
+                    sb.append("家庭医生签约：").append(nullable(rs.getString("doctor_name")));
+                    if (rs.getString("service_package") != null) sb.append("（").append(rs.getString("service_package")).append("）");
+                    if (rs.getDate("signed_at") != null) sb.append("，签约日期 ").append(rs.getDate("signed_at"));
+                    sb.append('\n');
+                    return null;
+                })
+                .optional();
+
+        List<String> followups = jdbcClient.sql("""
+                SELECT measured_at, systolic, diastolic, blood_sugar, height_cm, weight_kg, heart_rate, notes
+                FROM patient_followup WHERE patient_id = :id
+                ORDER BY measured_at DESC LIMIT 5
+                """)
+                .param("id", patientId)
+                .query((rs, n) -> {
+                    StringBuilder f = new StringBuilder();
+                    f.append("- ").append(rs.getTimestamp("measured_at").toInstant().toString(), 0, 10);
+                    if (rs.getObject("systolic") != null && rs.getObject("diastolic") != null) {
+                        f.append(" 血压 ").append(rs.getInt("systolic")).append('/').append(rs.getInt("diastolic")).append(" mmHg");
+                    }
+                    if (rs.getBigDecimal("blood_sugar") != null) f.append(" 血糖 ").append(rs.getBigDecimal("blood_sugar")).append(" mmol/L");
+                    if (rs.getBigDecimal("weight_kg") != null) f.append(" 体重 ").append(rs.getBigDecimal("weight_kg")).append(" kg");
+                    if (rs.getObject("heart_rate") != null) f.append(" 心率 ").append(rs.getInt("heart_rate")).append(" bpm");
+                    if (rs.getString("notes") != null && !rs.getString("notes").isBlank()) f.append("，备注：").append(rs.getString("notes"));
+                    return f.toString();
+                })
+                .list();
+        if (!followups.isEmpty()) {
+            sb.append("近期随访指标（最新在前）：\n");
+            followups.forEach(f -> sb.append(f).append('\n'));
+        }
+        return sb.toString();
+    }
+
+    private static void appendIfPresent(StringBuilder sb, String label, String value) {
+        if (value != null && !value.isBlank()) sb.append(label).append('：').append(value).append('\n');
+    }
+
+    private static String nullable(String s) { return s == null ? "未知" : s; }
+
+    static String buildUserPrompt(String question, List<Citation> citations, String patientContextBlock) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("患者基础档案：\n");
+        if (patientContextBlock == null || patientContextBlock.isBlank()) {
+            sb.append("（无）\n");
+        } else {
+            sb.append(patientContextBlock);
+        }
+        sb.append("\n患者历史片段（按相关度排序）：\n");
         if (citations.isEmpty()) {
             sb.append("（无）\n");
         } else {

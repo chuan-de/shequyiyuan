@@ -68,17 +68,21 @@ class PatientRagServiceTest {
                         "上呼吸道感染", Instant.parse("2026-01-01T00:00:00Z"), 0.92),
                 new Citation(2L, "visit", 200L, "visit_content",
                         "复诊", Instant.parse("2026-02-01T00:00:00Z"), 0.81));
-        String prompt = PatientRagService.buildUserPrompt("最近的诊断？", citations);
+        String prompt = PatientRagService.buildUserPrompt("最近的诊断？", citations,
+                "姓名：张三\n过敏史：青霉素过敏\n");
 
         assertTrue(prompt.contains("[#1]"));
         assertTrue(prompt.contains("[#2]"));
         assertTrue(prompt.contains("上呼吸道感染"));
         assertTrue(prompt.contains("最近的诊断？"));
+        // 患者基础档案块注入在历史片段之前
+        assertTrue(prompt.contains("患者基础档案"));
+        assertTrue(prompt.contains("青霉素过敏"));
     }
 
     @Test
-    void buildUserPrompt_handles_empty_citations() {
-        String prompt = PatientRagService.buildUserPrompt("有什么病史？", List.of());
+    void buildUserPrompt_handles_empty_citations_and_context() {
+        String prompt = PatientRagService.buildUserPrompt("有什么病史？", List.of(), "");
         assertTrue(prompt.contains("（无）"));
         assertTrue(prompt.contains("有什么病史？"));
     }
