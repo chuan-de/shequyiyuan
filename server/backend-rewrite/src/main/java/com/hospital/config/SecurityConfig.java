@@ -44,7 +44,10 @@ public class SecurityConfig {
                     "/actuator/info",
                     "/api/v1/health",
                     "/api/v1/auth/login",
-                    "/api/v1/auth/register"
+                    "/api/v1/auth/register",
+                    // Boot 的 404/500 会 ERROR-dispatch 到 /error，安全上下文不随转发传播；
+                    // 不放行的话所有未知路由都变成 401，前端会误判 token 失效强制登出。
+                    "/error"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/photos/*/content").permitAll()
                 .anyRequest().authenticated()
