@@ -76,10 +76,12 @@ export async function listDictionaries(token: string): Promise<DictionaryRespons
 }
 export async function queryDictionaryItems(token: string, query: ListQuery & { dictCode: string }): Promise<PageResponse<DictionaryItemResponse>> {
   const p = new URLSearchParams();
-  ['page','size','itemName','sortBy','sortDir'].forEach((k)=>{
+  ['size','itemName','sortBy','sortDir'].forEach((k)=>{
     const v = query[k as keyof typeof query];
     if (v !== undefined) p.set(k, String(v));
   });
+  // 字典接口的 page 是 0 基（其余业务接口为 1 基）；UI 统一 1 基，这里做转换。
+  if (query.page !== undefined) p.set('page', String(Math.max(0, query.page - 1)));
   return unwrapResponse(await apiFetch(`${API_ROUTES.dictionaryItems(query.dictCode)}?${p.toString()}`, { headers: authHeader(token), cache:'no-store' }));
 }
 /** 业务表单消费：仅启用项（任何登录用户可读）。 */
