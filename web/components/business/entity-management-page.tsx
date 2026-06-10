@@ -92,6 +92,8 @@ export type EntityPageConfig = {
     onClick: (row: EntityRecord, helpers: ActionHelpers) => void;
   }[];
   labelMap?: Record<string, string>;
+  /** 进入页面即弹出新建表单（配合 formFields defaultValue 实现跨页预填，如就诊→写病历）。 */
+  autoOpenCreate?: boolean;
 };
 
 function initForm(fields: EntityFormField[], row?: EntityRecord | null): Record<string, string> {
@@ -282,6 +284,7 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
 
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<Record<string, string>>(() => initForm(config.formFields));
+  const autoOpenedCreate = useRef(false);
   const [editing, setEditing] = useState<EntityRecord | null>(null);
   const [editForm, setEditForm] = useState<Record<string, string>>(() => initForm(config.formFields));
   const [detail, setDetail] = useState<EntityRecord | null>(null);
@@ -370,6 +373,15 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
       })
       .catch(() => { localStorage.removeItem('access_token'); localStorage.removeItem('token_type'); router.replace('/login'); });
   }, [router, config.permissionPrefix]);
+
+  // autoOpenCreate：带预填默认值进入页面时直接弹出新建表单（只触发一次）。
+  useEffect(() => {
+    if (config.autoOpenCreate && canWrite && !autoOpenedCreate.current) {
+      autoOpenedCreate.current = true;
+      setCreateForm(initForm(config.formFields));
+      setShowCreate(true);
+    }
+  }, [config.autoOpenCreate, canWrite, config.formFields]);
 
   useEffect(() => { if (token && canRead) void load(); }, [token, canRead, load]);
   useEffect(() => { setCreateForm(initForm(config.formFields)); }, [config.formFields]);

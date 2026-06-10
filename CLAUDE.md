@@ -84,7 +84,7 @@ Scripts live in `server/backend-rewrite/src/main/resources/db/migration/` as `V{
   - **L1** — base entity structure (`app_user`, `app_role`)
   - **L2** — RBAC structure (`app_permission`, `app_role_permission`)
   - **L3** — data patches / naming alignment (must run after L2)
-- Current versions: V1–V50. V4 and V44 are no-op markers; V13 holds the real config-permission alignment, V45 drops the obsolete `patient_knowledge_chunk` table after the storage move to Qdrant. V37–V45 are AI module migrations (see `docs/ai-features-plan.md`). V47–V49 add patient medical fields, family-doctor contracts, and chronic-disease followups. V50 drops the health_record module (superseded by V47+V49).
+- Current versions: V1–V52. V4 and V44 are no-op markers; V13 holds the real config-permission alignment, V45 drops the obsolete `patient_knowledge_chunk` table after the storage move to Qdrant. V37–V45 are AI module migrations (see `docs/ai-features-plan.md`). V47–V49 add patient medical fields, family-doctor contracts, and chronic-disease followups. V50 drops the health_record module (superseded by V47+V49). V51 links doctor→department, visit→doctor, medical_record→visit. V52 grants the RECEPTION role its working permissions.
 
 ### AI Module (`com.hospital.ai.*`)
 

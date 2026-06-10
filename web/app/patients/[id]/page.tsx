@@ -25,6 +25,7 @@ export default function PatientDetailPage() {
   const [contracts, setContracts] = useState<EntityRecord[]>([]);
   const [followups, setFollowups] = useState<EntityRecord[]>([]);
   const [visits, setVisits] = useState<EntityRecord[]>([]);
+  const [medicalRecords, setMedicalRecords] = useState<EntityRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +50,7 @@ export default function PatientDetailPage() {
       // 各分区按权限拉取，单个失败不拖垮整页。
       const safe = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
       const empty = { records: [] as EntityRecord[], total: 0, page: 1, size: 0 };
-      const [row, contractRes, followupRes, visitRes] = await Promise.all([
+      const [row, contractRes, followupRes, visitRes, recordRes] = await Promise.all([
         getEntity(t, API_ROUTES.patients, pid),
         hasPermission(me, 'family-doctor-contracts:read')
           ? safe(listEntities(t, API_ROUTES.familyDoctorContracts, { patientId: pid, page: 1, size: 50 }), empty)
@@ -58,14 +59,17 @@ export default function PatientDetailPage() {
           ? safe(listEntities(t, API_ROUTES.followups, { patientId: pid, page: 1, size: 200 }), empty)
           : Promise.resolve(empty),
         hasPermission(me, 'visits:read')
-          ? safe(listEntities(t, API_ROUTES.visits, { page: 1, size: 500 }), empty)
+          ? safe(listEntities(t, API_ROUTES.visits, { patientId: pid, page: 1, size: 100 }), empty)
+          : Promise.resolve(empty),
+        hasPermission(me, 'medical-records:read')
+          ? safe(listEntities(t, API_ROUTES.medicalRecords, { patientId: pid, page: 1, size: 100 }), empty)
           : Promise.resolve(empty),
       ]);
       setPatient(row);
       setContracts(contractRes.records);
       setFollowups(followupRes.records);
-      // 就诊接口暂无 patientId 过滤参数，前端按患者过滤。
-      setVisits(visitRes.records.filter(v => Number(v.patientId) === pid));
+      setVisits(visitRes.records);
+      setMedicalRecords(recordRes.records);
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载患者信息失败');
     } finally {
@@ -101,14 +105,21 @@ export default function PatientDetailPage() {
   const latestFollowup = followups[0] ?? null;
 
   const timeline = useMemo(() => {
-    const items = visits.map(v => ({
+    const items: { time: string; kind: '就诊' | '病历'; title: string; href: string }[] = [];
+    visits.forEach(v => items.push({
       time: String(v.visitDate ?? v.createdAt ?? ''),
-      kind: '就诊' as const,
-      title: `就诊号 ${v.visitNumber ?? '—'}${v.fee != null ? ` · 费用 ¥${Number(v.fee).toFixed(2)}` : ''}${v.registrationNotes ? ` · ${v.registrationNotes}` : ''}`,
+      kind: '就诊',
+      title: `就诊号 ${v.visitNumber ?? '—'}${v.doctorName ? ` · ${v.doctorName}` : ''}${v.fee != null ? ` · 费用 ¥${Number(v.fee).toFixed(2)}` : ''}${v.registrationNotes ? ` · ${v.registrationNotes}` : ''}`,
       href: '/visits',
     }));
+    medicalRecords.forEach(r => items.push({
+      time: String(r.recordDate ?? r.createdAt ?? ''),
+      kind: '病历',
+      title: `${r.caseNumber ?? ''} ${r.caseName ?? '—'}${r.doctorName ? ` · ${r.doctorName}` : ''}`.trim(),
+      href: '/medical-records',
+    }));
     return items.filter(i => i.time).sort((a, b) => b.time.localeCompare(a.time)).slice(0, 10);
-  }, [visits]);
+  }, [visits, medicalRecords]);
 
   return (
     <AppShell title={fullName ? `患者：${fullName}` : '患者详情'} description="患者 360° 视图 — 档案、签约、健康趋势与 AI 问询">
@@ -219,17 +230,17 @@ export default function PatientDetailPage() {
               </section>
             )}
 
-            {/* 就诊时间线 */}
-            {hasPermission(user, 'visits:read') && (
+            {/* 就诊 / 病历时间线 */}
+            {(hasPermission(user, 'visits:read') || hasPermission(user, 'medical-records:read')) && (
               <section className="rounded-xl border border-slate-200 bg-white p-5">
-                <h2 className="mb-3 text-sm font-semibold text-slate-900">📋 就诊时间线</h2>
+                <h2 className="mb-3 text-sm font-semibold text-slate-900">📋 就诊与病历时间线</h2>
                 {timeline.length === 0 ? (
                   <p className="text-sm text-slate-400">暂无记录</p>
                 ) : (
                   <ol className="space-y-3">
                     {timeline.map((item, i) => (
                       <li key={i} className="flex items-start gap-3 text-sm">
-                        <span className="mt-0.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                        <span className={`mt-0.5 rounded-full px-2 py-0.5 text-xs font-medium ${item.kind === '就诊' ? 'bg-blue-50 text-blue-700' : 'bg-violet-50 text-violet-700'}`}>
                           {item.kind}
                         </span>
                         <div className="min-w-0 flex-1">

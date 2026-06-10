@@ -26,11 +26,12 @@ public class DoctorController {
         @RequestParam(required = false) String uuidNumber,
         @RequestParam(required = false) String fullName,
         @RequestParam(required = false) Integer sexTypes,
+        @RequestParam(required = false) Long departmentId,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "10") int size,
         @RequestParam(required = false) String sortBy,
         @RequestParam(defaultValue = "asc") String sortDir) {
-        List<DoctorResponse> all = service.list(keyword, uuidNumber, fullName, sexTypes);
+        List<DoctorResponse> all = service.list(keyword, uuidNumber, fullName, sexTypes, departmentId);
         return ApiResponse.ok(PageQueryUtils.toPage(all, page, size, sortBy, sortDir));
     }
 

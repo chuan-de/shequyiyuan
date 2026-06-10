@@ -70,6 +70,8 @@
 
 ## 迁移顺序调整记录
 
+- **模块串联（2026-06-10）**：V51 打通核心业务链 —— `doctor_profile.department_id`（医生归属科室）、`visit_record.doctor_id`（挂号选医生，前端按科室联动过滤）、`medical_record.visit_id`（病历挂接就诊，就诊列表「写病历」直达预填）；病历保存按处方明细自动扣减药品库存并写 `medication_inventory_log`（库存不足 409 回滚，删病历返还库存）。V52 给 RECEPTION 角色补发工作权限（挂号/患者读写 + 医生/科室/签约/随访只读）。新增 `GET /api/v1/dashboard/summary` 按权限裁剪的首页聚合指标。签约到期自动显示 EXPIRED（查询期换算 + 建约时惰性落库）。
+
 - **健康档案模块下线（2026-06-10）**：V50 删除 `health_record` 表、`health-records:*` 权限、`jiuankangdangan_types` 字典及 AI 死信残留。原因：自由文本档案与患者档案扩展（V47 过敏史/既往病史）+ 慢病随访（V49 结构化指标）完全重叠。AI 患者 RAG 摄取源从三个收敛为 medical_record / visit 两个。
 
 - **患者档案补强（2026-06-10）**：V47 扩展 `patient_profile`（出生日期/住址/过敏史/既往病史/紧急联系人）；V48 新增 `family_doctor_contract`（家医签约，部分唯一索引保证一患者仅一份生效签约）；V49 新增 `patient_followup`（慢病随访健康指标）。前端新增 `/family-doctor-contracts`、`/followups` 页面，患者详情页升级为 360° 视图（基本信息 + 签约 + 健康趋势 + 就诊/档案时间线 + AI 问询）。

@@ -35,6 +35,17 @@ export function ContractManagementPage() {
 
     return {
       ...contractsPageConfig,
+      columns: contractsPageConfig.columns.map(c =>
+        c.key === 'patientName'
+          ? {
+              ...c,
+              // 患者姓名可点击 → 患者 360° 视图。
+              render: (row) => row.patientId
+                ? <a href={`/patients/${row.patientId}`} className="text-blue-600 hover:underline">{String(row.patientName ?? '—')}</a>
+                : String(row.patientName ?? '—'),
+            }
+          : c
+      ),
       formFields: contractsPageConfig.formFields.map(f => {
         if (f.key === 'patientId') return { ...f, type: 'select' as const, options: patientOptions, placeholder: '请选择患者' };
         if (f.key === 'familyDoctorId') return { ...f, type: 'select' as const, options: doctorOptions, placeholder: '请选择家庭医生' };

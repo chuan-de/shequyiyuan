@@ -101,6 +101,10 @@ export async function changeDictionaryItemStatus(token: string, id: number, enab
 export async function fetchEffectiveConfigs(token: string): Promise<Record<string, string>> {
   return unwrapResponse(await apiFetch(`${API_ROUTES.configs}/effective`, { headers: authHeader(token), cache:'no-store' }));
 }
+/** 首页仪表盘聚合计数；后端按调用者权限裁剪，缺权限的指标 key 不存在。 */
+export async function fetchDashboardSummary(token: string): Promise<Record<string, number>> {
+  return unwrapResponse(await apiFetch('/api/v1/dashboard/summary', { headers: authHeader(token), cache:'no-store' }));
+}
 export async function listEntities(
   token: string,
   route: string,

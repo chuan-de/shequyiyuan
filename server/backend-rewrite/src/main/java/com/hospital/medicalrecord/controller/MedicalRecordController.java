@@ -22,9 +22,10 @@ public class MedicalRecordController {
     @GetMapping
     @PreAuthorize("hasAnyAuthority('medical-records:read', 'bingli:read')")
     public ApiResponse<PageResponse<MedicalRecord>> list(@RequestParam(required = false) String keyword, @RequestParam(required = false) MedicalRecordStatus status,
+                                                         @RequestParam(required = false) Long patientId,
                                                          @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size,
                                                          @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "asc") String sortDir) {
-        return ApiResponse.ok(PageQueryUtils.toPage(service.list(keyword, status), page, size, sortBy, sortDir));
+        return ApiResponse.ok(PageQueryUtils.toPage(service.list(keyword, status, patientId), page, size, sortBy, sortDir));
     }
 
     @GetMapping("/{id}")

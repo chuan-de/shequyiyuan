@@ -19,9 +19,11 @@ public class DefaultDoctorService implements DoctorService {
     private static final String SELECT_SQL = """
         SELECT dp.id, dp.user_id, au.username, au.enabled,
                dp.uuid_number, dp.full_name, dp.photo_url, dp.sex_types,
-               dp.phone, dp.id_number, dp.email, dp.created_at
+               dp.phone, dp.id_number, dp.email, dp.department_id,
+               dept.dept_name AS department_name, dp.created_at
         FROM doctor_profile dp
         JOIN app_user au ON au.id = dp.user_id
+        LEFT JOIN department dept ON dept.id = dp.department_id
         """;
 
     private final DoctorProfileRepository profileRepo;
@@ -38,13 +40,14 @@ public class DefaultDoctorService implements DoctorService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<DoctorResponse> list(String keyword, String uuidNumber, String fullName, Integer sexTypes) {
+    public List<DoctorResponse> list(String keyword, String uuidNumber, String fullName, Integer sexTypes, Long departmentId) {
         String sql = SELECT_SQL + """
             WHERE (CAST(:keyword AS TEXT) IS NULL OR dp.full_name ILIKE '%' || :keyword || '%'
                                     OR au.username ILIKE '%' || :keyword || '%')
               AND (CAST(:uuidNumber AS TEXT) IS NULL OR dp.uuid_number ILIKE '%' || :uuidNumber || '%')
               AND (CAST(:fullName AS TEXT) IS NULL OR dp.full_name ILIKE '%' || :fullName || '%')
               AND (CAST(:sexTypes AS INTEGER) IS NULL OR dp.sex_types = :sexTypes)
+              AND (CAST(:departmentId AS BIGINT) IS NULL OR dp.department_id = CAST(:departmentId AS BIGINT))
             ORDER BY dp.created_at DESC
             """;
         return jdbcClient.sql(sql)
@@ -52,6 +55,7 @@ public class DefaultDoctorService implements DoctorService {
             .param("uuidNumber", blank(uuidNumber))
             .param("fullName", blank(fullName))
             .param("sexTypes", sexTypes)
+            .param("departmentId", departmentId)
             .query(this::mapRow).list();
     }
 
@@ -77,6 +81,7 @@ public class DefaultDoctorService implements DoctorService {
 
         DoctorProfile profile = new DoctorProfile(userId, req.uuidNumber(), req.fullName(),
             req.photoUrl(), req.sexTypes(), req.phone(), req.idNumber(), req.email());
+        profile.setDepartmentId(req.departmentId());
         profile = profileRepo.save(profile);
         return detail(profile.getId());
     }
@@ -98,7 +103,9 @@ public class DefaultDoctorService implements DoctorService {
         profile.setPhone(req.phone());
         profile.setIdNumber(req.idNumber());
         profile.setEmail(req.email());
-        profileRepo.save(profile);
+        profile.setDepartmentId(req.departmentId());
+        // detail() 走 JdbcClient 直读数据库，必须先 flush JPA 脏数据。
+        profileRepo.saveAndFlush(profile);
         return detail(id);
     }
 
@@ -128,10 +135,12 @@ public class DefaultDoctorService implements DoctorService {
 
     private DoctorResponse mapRow(ResultSet rs, int rowNum) throws SQLException {
         Integer sexTypes = rs.getObject("sex_types") != null ? rs.getInt("sex_types") : null;
+        Long departmentId = rs.getObject("department_id") != null ? rs.getLong("department_id") : null;
         return new DoctorResponse(
             rs.getLong("id"), rs.getLong("user_id"), rs.getString("username"), rs.getBoolean("enabled"),
             rs.getString("uuid_number"), rs.getString("full_name"), rs.getString("photo_url"),
             sexTypes, rs.getString("phone"), rs.getString("id_number"), rs.getString("email"),
+            departmentId, rs.getString("department_name"),
             rs.getTimestamp("created_at").toInstant());
     }
 }

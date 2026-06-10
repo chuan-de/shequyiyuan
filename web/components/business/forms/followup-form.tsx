@@ -27,6 +27,17 @@ export function FollowupManagementPage() {
 
     return {
       ...followupsPageConfig,
+      columns: followupsPageConfig.columns.map(c =>
+        c.key === 'patientName'
+          ? {
+              ...c,
+              // 患者姓名可点击 → 患者 360° 视图。
+              render: (row) => row.patientId
+                ? <a href={`/patients/${row.patientId}`} className="text-blue-600 hover:underline">{String(row.patientName ?? '—')}</a>
+                : String(row.patientName ?? '—'),
+            }
+          : c
+      ),
       formFields: followupsPageConfig.formFields.map(f =>
         f.key === 'patientId'
           ? { ...f, type: 'select' as const, options: patientOptions, placeholder: '请选择患者' }

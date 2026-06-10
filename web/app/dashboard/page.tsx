@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
-import { CurrentUserResponse, currentUser } from '@/lib/api';
+import { CurrentUserResponse, currentUser, fetchDashboardSummary } from '@/lib/api';
 import { useEffectiveConfigs } from '@/lib/system-config';
 import { clearToken, readToken } from '@/lib/token-storage';
 
@@ -24,6 +24,8 @@ export default function DashboardPage() {
   const configs = useEffectiveConfigs(token);
   const announcement = configs?.['system.announcement']?.trim();
 
+  const [summary, setSummary] = useState<Record<string, number> | null>(null);
+
   useEffect(() => {
     const token = readToken();
     if (!token) { router.replace('/login'); return; }
@@ -32,30 +34,23 @@ export default function DashboardPage() {
       .then(setUser)
       .catch(() => { clearToken(); router.replace('/login'); })
       .finally(() => setLoading(false));
+    fetchDashboardSummary(token.accessToken)
+      .then(setSummary)
+      .catch(() => setSummary(null));
   }, [router]);
 
-  const stats = [
-    {
-      icon: '👤',
-      label: '当前账号',
-      value: user?.username ?? '-',
-    },
-    {
-      icon: '🟢',
-      label: '账号状态',
-      value: user?.enabled ? '启用' : '禁用',
-    },
-    {
-      icon: '🎖️',
-      label: '角色',
-      value: user?.roles?.map(r => ROLE_LABELS[r] ?? r).join('、') || '-',
-    },
-    {
-      icon: '🔑',
-      label: '权限数',
-      value: String(user?.permissions?.length ?? 0),
-    },
+  // 业务统计卡：key 是否存在由后端按调用者权限裁剪，缺权限的卡片不渲染。
+  const STAT_DEFS: { key: string; icon: string; label: string; href: string; warnWhenPositive?: boolean }[] = [
+    { key: 'patientCount', icon: '🧑‍⚕️', label: '在档患者', href: '/patients' },
+    { key: 'todayVisitCount', icon: '📋', label: '今日就诊', href: '/visits' },
+    { key: 'lowStockMedicationCount', icon: '💊', label: '低库存药品', href: '/medications', warnWhenPositive: true },
+    { key: 'activeContractCount', icon: '🤝', label: '生效签约', href: '/family-doctor-contracts' },
+    { key: 'recentFollowupCount', icon: '🩺', label: '近7日随访', href: '/followups' },
+    { key: 'doctorCount', icon: '👨‍⚕️', label: '在职医生', href: '/doctors' },
   ];
+  const stats = STAT_DEFS
+    .filter(d => summary != null && summary[d.key] !== undefined)
+    .map(d => ({ ...d, value: summary![d.key] }));
 
   return (
     <AppShell title="首页">
@@ -79,23 +74,31 @@ export default function DashboardPage() {
               欢迎回来，{user?.username} 👋
             </p>
             <p className="relative mt-1.5 text-sm text-blue-100/90">
-              社区医院管理系统 · 请从左侧菜单选择功能模块
+              {user?.roles?.map(r => ROLE_LABELS[r] ?? r).join('、') || '社区医院管理系统'} · 请从左侧菜单选择功能模块
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {stats.map((s) => (
-              <div key={s.label} className="card flex items-center gap-4 !p-5">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-xl">
-                  {s.icon}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{s.label}</p>
-                  <p className="truncate text-base font-bold text-slate-800">{s.value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          {stats.length > 0 && (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+              {stats.map((s) => {
+                const warn = s.warnWhenPositive && s.value > 0;
+                return (
+                  <a key={s.key} href={s.href} className="card flex items-center gap-4 !p-5 transition hover:-translate-y-0.5 hover:shadow-md">
+                    <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xl ${warn ? 'bg-amber-50' : 'bg-blue-50'}`}>
+                      {s.icon}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{s.label}</p>
+                      <p className={`truncate text-xl font-bold ${warn ? 'text-amber-600' : 'text-slate-800'}`}>
+                        {s.value}
+                        {warn && <span className="ml-1 align-middle text-xs font-normal">⚠️ 需补货</span>}
+                      </p>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </AppShell>

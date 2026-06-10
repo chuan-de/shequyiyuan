@@ -246,6 +246,7 @@ export const doctorPageConfig: EntityPageConfig = {
     { key: 'username', title: '账户' },
     { key: 'fullName', title: '医生姓名' },
     { key: 'photoUrl', title: '头像', type: 'photo' },
+    { key: 'departmentName', title: '所属科室' },
     { key: 'sexTypes', title: '性别', dictCode: 'sex_types' },
     { key: 'phone', title: '联系方式' },
     { key: 'idNumber', title: '医生身份证号' },
@@ -257,6 +258,8 @@ export const doctorPageConfig: EntityPageConfig = {
     { key: 'uuidNumber', label: '工号', defaultValue: '' },
     { key: 'fullName', label: '医生姓名', required: true, defaultValue: '' },
     { key: 'photoUrl', label: '头像', type: 'photo', defaultValue: '' },
+    // 所属科室由 DoctorManagementPage 包装层联动 department 表。
+    { key: 'departmentId', label: '所属科室', type: 'number', defaultValue: '' },
     { key: 'sexTypes', label: '性别', type: 'dict-select', dictCode: 'sex_types', defaultValue: '' },
     { key: 'phone', label: '联系方式', defaultValue: '' },
     { key: 'idNumber', label: '医生身份证号', defaultValue: '' },
@@ -278,11 +281,12 @@ export const doctorPageConfig: EntityPageConfig = {
   ],
   labelMap: {
     uuidNumber: '工号', username: '账户', fullName: '医生姓名', photoUrl: '头像',
+    departmentId: '科室ID', departmentName: '所属科室',
     sexTypes: '性别', phone: '联系方式', idNumber: '医生身份证号', email: '邮箱',
     enabled: '状态', createdAt: '创建时间',
   },
-  createPayload: (form) => ({ username: form.username, password: form.password, uuidNumber: form.uuidNumber || undefined, fullName: form.fullName, photoUrl: form.photoUrl || undefined, sexTypes: form.sexTypes ? Number(form.sexTypes) : undefined, phone: form.phone || undefined, idNumber: form.idNumber || undefined, email: form.email || undefined }),
-  updatePayload: (form) => ({ uuidNumber: form.uuidNumber || undefined, fullName: form.fullName, photoUrl: form.photoUrl || undefined, sexTypes: form.sexTypes ? Number(form.sexTypes) : undefined, phone: form.phone || undefined, idNumber: form.idNumber || undefined, email: form.email || undefined }),
+  createPayload: (form) => ({ username: form.username, password: form.password, uuidNumber: form.uuidNumber || undefined, fullName: form.fullName, photoUrl: form.photoUrl || undefined, departmentId: form.departmentId ? Number(form.departmentId) : undefined, sexTypes: form.sexTypes ? Number(form.sexTypes) : undefined, phone: form.phone || undefined, idNumber: form.idNumber || undefined, email: form.email || undefined }),
+  updatePayload: (form) => ({ uuidNumber: form.uuidNumber || undefined, fullName: form.fullName, photoUrl: form.photoUrl || undefined, departmentId: form.departmentId ? Number(form.departmentId) : undefined, sexTypes: form.sexTypes ? Number(form.sexTypes) : undefined, phone: form.phone || undefined, idNumber: form.idNumber || undefined, email: form.email || undefined }),
 };
 
 export const visitPageConfig: EntityPageConfig = {
@@ -299,6 +303,7 @@ export const visitPageConfig: EntityPageConfig = {
     // 科室列/表单由 VisitManagementPage 包装层联动 department 表（id → 科室名），
     // 不走数据字典 —— 新增科室后就诊表单自动出现，无需重复维护。
     { key: 'keshiTypes', title: '科室' },
+    { key: 'doctorName', title: '接诊医生' },
     { key: 'visitDate', title: '日期', render: (row) => row.visitDate ? String(row.visitDate).substring(0, 10) : '—' },
     { key: 'registrationNotes', title: '挂号备注' },
   ],
@@ -306,6 +311,8 @@ export const visitPageConfig: EntityPageConfig = {
     { key: 'patientId', label: '患者ID', required: true, type: 'number', defaultValue: '' },
     { key: 'fee', label: '就诊费用', type: 'number', defaultValue: '' },
     { key: 'keshiTypes', label: '科室', type: 'number', defaultValue: '' },
+    // 接诊医生由 VisitManagementPage 包装层按所选科室联动过滤。
+    { key: 'doctorId', label: '接诊医生', type: 'number', defaultValue: '' },
     { key: 'visitDate', label: '日期', type: 'datetime', defaultValue: '' },
     { key: 'registrationNotes', label: '挂号备注', type: 'textarea', defaultValue: '' },
     { key: 'visitContent', label: '挂号详情', type: 'textarea', defaultValue: '' },
@@ -324,13 +331,15 @@ export const visitPageConfig: EntityPageConfig = {
     patientPhone: '联系方式',
     patientIdNumber: '用户身份证号',
     keshiTypes: '科室',
+    doctorId: '接诊医生ID',
+    doctorName: '接诊医生',
     fee: '就诊费用',
     registrationNotes: '挂号备注',
     visitContent: '挂号详情',
     createdAt: '创建时间',
   },
-  createPayload: (form) => ({ patientId: Number(form.patientId), fee: form.fee ? Number(form.fee) : undefined, keshiTypes: form.keshiTypes ? Number(form.keshiTypes) : undefined, visitDate: form.visitDate ? new Date(form.visitDate).toISOString() : undefined, registrationNotes: form.registrationNotes || undefined, visitContent: form.visitContent || undefined }),
-  updatePayload: (form) => ({ fee: form.fee ? Number(form.fee) : undefined, keshiTypes: form.keshiTypes ? Number(form.keshiTypes) : undefined, visitDate: form.visitDate ? new Date(form.visitDate).toISOString() : undefined, registrationNotes: form.registrationNotes || undefined, visitContent: form.visitContent || undefined }),
+  createPayload: (form) => ({ patientId: Number(form.patientId), fee: form.fee ? Number(form.fee) : undefined, keshiTypes: form.keshiTypes ? Number(form.keshiTypes) : undefined, doctorId: form.doctorId ? Number(form.doctorId) : undefined, visitDate: form.visitDate ? new Date(form.visitDate).toISOString() : undefined, registrationNotes: form.registrationNotes || undefined, visitContent: form.visitContent || undefined }),
+  updatePayload: (form) => ({ fee: form.fee ? Number(form.fee) : undefined, keshiTypes: form.keshiTypes ? Number(form.keshiTypes) : undefined, doctorId: form.doctorId ? Number(form.doctorId) : undefined, visitDate: form.visitDate ? new Date(form.visitDate).toISOString() : undefined, registrationNotes: form.registrationNotes || undefined, visitContent: form.visitContent || undefined }),
 };
 
 export const familyDoctorsPageConfig: EntityPageConfig = {
@@ -406,6 +415,8 @@ export const medicalRecordsPageConfig: EntityPageConfig = {
   formFields: [
     { key: 'doctorId', label: '医生', required: true, type: 'select', options: [], placeholder: '请选择医生', defaultValue: '' },
     { key: 'patientId', label: '患者', required: true, type: 'select', options: [], placeholder: '请选择患者', defaultValue: '' },
+    // 关联就诊由 MedicalRecordManagementPage 包装层按所选患者联动过滤（可不选）。
+    { key: 'visitId', label: '关联就诊', type: 'number', defaultValue: '' },
     { key: 'caseName', label: '病历名称', required: true, placeholder: '请输入病历名称', defaultValue: '' },
     { key: 'recordDate', label: '日期', type: 'datetime', defaultValue: '' },
     { key: 'conditionDesc', label: '病情描述', type: 'textarea', placeholder: '请输入病情描述', defaultValue: '' },
@@ -419,6 +430,7 @@ export const medicalRecordsPageConfig: EntityPageConfig = {
   labelMap: {
     caseNumber: '病历编号',
     caseName: '病历名称',
+    visitId: '关联就诊ID',
     recordDate: '日期',
     doctorName: '医生姓名',
     doctorPhone: '医生联系方式',
@@ -438,6 +450,7 @@ export const medicalRecordsPageConfig: EntityPageConfig = {
   createPayload: (form) => ({
     doctorId: Number(form.doctorId),
     patientId: Number(form.patientId),
+    visitId: form.visitId ? Number(form.visitId) : undefined,
     caseName: form.caseName,
     conditionDesc: form.conditionDesc || undefined,
     examItems: form.examItems || undefined,
@@ -449,6 +462,7 @@ export const medicalRecordsPageConfig: EntityPageConfig = {
   updatePayload: (form) => ({
     doctorId: Number(form.doctorId),
     patientId: Number(form.patientId),
+    visitId: form.visitId ? Number(form.visitId) : undefined,
     caseName: form.caseName,
     conditionDesc: form.conditionDesc || undefined,
     examItems: form.examItems || undefined,

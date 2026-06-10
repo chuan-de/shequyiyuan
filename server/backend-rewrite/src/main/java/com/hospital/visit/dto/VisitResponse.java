@@ -8,5 +8,6 @@ public record VisitResponse(
     Instant visitDate, String registrationNotes, String visitContent,
     Long patientId, String patientFullName, String patientPhotoUrl,
     String patientPhone, String patientIdNumber, String patientEmail,
+    Long doctorId, String doctorName,
     Instant createdAt
 ) {}

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { EntityManagementPage, EntityPageConfig, CustomFieldContext } from '@/components/business/entity-management-page';
 import { medicalRecordsPageConfig } from './entity-form-configs';
 import { API_ROUTES, EntityRecord, AiVisionResponse, MedicalRecordFields } from '@/lib/api-contract';
@@ -219,6 +220,12 @@ export function MedicalRecordManagementPage() {
   const [doctors, setDoctors] = useState<EntityRecord[]>([]);
   const [medications, setMedications] = useState<EntityRecord[]>([]);
   const [patients, setPatients] = useState<EntityRecord[]>([]);
+  const [visits, setVisits] = useState<EntityRecord[]>([]);
+  // 跨页预填：就诊列表的「写病历」带 ?patientId=&visitId=&create=1 跳入。
+  const searchParams = useSearchParams();
+  const prefillPatientId = searchParams?.get('patientId') ?? '';
+  const prefillVisitId = searchParams?.get('visitId') ?? '';
+  const autoCreate = searchParams?.get('create') === '1';
 
   useEffect(() => {
     const t = readToken();
@@ -232,6 +239,9 @@ export function MedicalRecordManagementPage() {
     listEntities(t.accessToken, API_ROUTES.patients, { page: 1, size: 500 })
       .then(res => setPatients(res.records))
       .catch(() => setPatients([]));
+    listEntities(t.accessToken, API_ROUTES.visits, { page: 1, size: 500 })
+      .then(res => setVisits(res.records))
+      .catch(() => setVisits([]));
   }, []);
 
   const config: EntityPageConfig = useMemo(() => {
@@ -278,13 +288,44 @@ export function MedicalRecordManagementPage() {
         };
         if (c.key === 'patientName') return {
           ...c,
-          render: (row) => row.patientName ? String(row.patientName) : (patientIdToName.get(Number(row.patientId)) ?? '—'),
+          // 患者姓名可点击 → 患者 360° 视图。
+          render: (row) => {
+            const name = row.patientName ? String(row.patientName) : (patientIdToName.get(Number(row.patientId)) ?? '—');
+            return row.patientId
+              ? <a href={`/patients/${row.patientId}`} className="text-blue-600 hover:underline">{name}</a>
+              : name;
+          },
         };
         return c;
       }),
       formFields: medicalRecordsPageConfig.formFields.map(f => {
         if (f.key === 'doctorId') return { ...f, type: 'select' as const, options: doctorOptions };
-        if (f.key === 'patientId') return { ...f, type: 'select' as const, options: patientOptions };
+        if (f.key === 'patientId') return { ...f, type: 'select' as const, options: patientOptions, defaultValue: prefillPatientId };
+        if (f.key === 'visitId') return {
+          ...f,
+          defaultValue: prefillVisitId,
+          type: 'custom' as const,
+          // 按所选患者联动过滤其就诊记录；可不挂接。
+          customRender: (value, onChange, _mode, ctx) => {
+            const pid = ctx.getFormValue('patientId');
+            const opts = visits
+              .filter(v => !pid || String(v.patientId) === pid)
+              .map(v => ({
+                value: String(v.id),
+                label: `${v.visitNumber ?? v.id}（${v.visitDate ? String(v.visitDate).substring(0, 10) : '—'}）`,
+              }));
+            return (
+              <Select
+                value={value}
+                onChange={onChange}
+                options={opts}
+                placeholder={pid ? (opts.length === 0 ? '该患者暂无就诊记录' : '可选：关联一次就诊') : '请先选择患者'}
+                allowEmpty
+                emptyLabel="不关联就诊"
+              />
+            );
+          },
+        };
         if (f.key === 'prescriptionItems') return {
           ...f,
           customRender: (value, onChange) => (
@@ -301,8 +342,9 @@ export function MedicalRecordManagementPage() {
       }),
       createPayload: (form) => enrich(form, medicalRecordsPageConfig.createPayload(form)),
       updatePayload: (form, row) => enrich(form, medicalRecordsPageConfig.updatePayload(form, row)),
+      autoOpenCreate: autoCreate,
     };
-  }, [doctors, medications, patients]);
+  }, [doctors, medications, patients, visits, prefillPatientId, prefillVisitId, autoCreate]);
 
   return <EntityManagementPage config={config} />;
 }

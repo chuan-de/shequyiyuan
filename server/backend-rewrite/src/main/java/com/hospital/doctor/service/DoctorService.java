@@ -4,7 +4,7 @@ import com.hospital.doctor.dto.*;
 import java.util.List;
 
 public interface DoctorService {
-    List<DoctorResponse> list(String keyword, String uuidNumber, String fullName, Integer sexTypes);
+    List<DoctorResponse> list(String keyword, String uuidNumber, String fullName, Integer sexTypes, Long departmentId);
     DoctorResponse detail(Long id);
     DoctorResponse create(DoctorCreateRequest request, String actor);
     DoctorResponse update(Long id, DoctorUpdateRequest request, String actor);

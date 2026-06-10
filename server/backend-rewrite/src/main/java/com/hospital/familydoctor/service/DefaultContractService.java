@@ -21,10 +21,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class DefaultContractService implements ContractService {
 
+    // status 列做展示期换算：到期日已过的 ACTIVE 直接呈现为 EXPIRED（写库由 create 时的惰性过期兜底）。
     private static final String SELECT_SQL = """
             SELECT c.id, c.patient_id, pp.full_name AS patient_name, pp.phone AS patient_phone,
                    c.family_doctor_id, fd.full_name AS doctor_name, fd.phone AS doctor_phone,
-                   c.service_package, c.signed_at, c.expires_at, c.status, c.notes, c.created_at
+                   c.service_package, c.signed_at, c.expires_at,
+                   CASE WHEN c.status = 'ACTIVE' AND c.expires_at IS NOT NULL AND c.expires_at < CURRENT_DATE
+                        THEN 'EXPIRED' ELSE c.status END AS status,
+                   c.notes, c.created_at
             FROM family_doctor_contract c
             JOIN patient_profile pp ON pp.id = c.patient_id
             JOIN family_doctor_profile fd ON fd.id = c.family_doctor_id
@@ -78,6 +82,7 @@ public class DefaultContractService implements ContractService {
     public ContractResponse create(ContractCreateRequest r, String actor) {
         if (!patientRepo.existsById(r.patientId())) throw new NotFoundException("Patient not found: " + r.patientId());
         if (!doctorRepo.existsById(r.familyDoctorId())) throw new NotFoundException("Family doctor not found: " + r.familyDoctorId());
+        expireStaleContracts(r.patientId());
         if (contractRepo.existsByPatientIdAndStatus(r.patientId(), ContractStatus.ACTIVE)) {
             throw new IllegalArgumentException("该患者已有生效中的签约，请先解约");
         }
@@ -110,6 +115,17 @@ public class DefaultContractService implements ContractService {
         c.setStatus(targetStatus);
         contractRepo.saveAndFlush(c);
         return detail(id);
+    }
+
+    /** 惰性过期：建约前把该患者到期未处理的 ACTIVE 签约置为 EXPIRED，腾出唯一索引位。 */
+    private void expireStaleContracts(Long patientId) {
+        jdbcClient.sql("""
+                UPDATE family_doctor_contract SET status = 'EXPIRED'
+                WHERE patient_id = :pid AND status = 'ACTIVE'
+                  AND expires_at IS NOT NULL AND expires_at < CURRENT_DATE
+                """)
+                .param("pid", patientId)
+                .update();
     }
 
     private ContractResponse mapRow(ResultSet rs, int rowNum) throws SQLException {

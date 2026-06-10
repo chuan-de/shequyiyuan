@@ -80,6 +80,9 @@ public class MedicalRecord {
     @Column(name = "record_date")
     private Instant recordDate;
 
+    @Column(name = "visit_id")
+    private Long visitId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MedicalRecordStatus status;
@@ -151,6 +154,8 @@ public class MedicalRecord {
     public Map<String, Object> getAiExtracted() { return aiExtracted; }
     public void setAiExtracted(Map<String, Object> aiExtracted) { this.aiExtracted = aiExtracted; }
     public Instant getRecordDate() { return recordDate; }
+    public Long getVisitId() { return visitId; }
+    public void setVisitId(Long visitId) { this.visitId = visitId; }
     public MedicalRecordStatus getStatus() { return status; }
     public Long getVersion() { return version; }
     public Instant getCreatedAt() { return createdAt; }

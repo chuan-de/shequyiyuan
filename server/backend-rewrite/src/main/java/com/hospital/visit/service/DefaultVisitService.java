@@ -25,9 +25,11 @@ public class DefaultVisitService implements VisitService {
         SELECT vr.id, vr.visit_number, vr.fee, vr.keshi_types, vr.visit_date,
                vr.registration_notes, vr.visit_content, vr.patient_id, vr.created_at,
                pp.full_name AS patient_full_name, pp.photo_url AS patient_photo_url,
-               pp.phone AS patient_phone, pp.id_number AS patient_id_number, pp.email AS patient_email
+               pp.phone AS patient_phone, pp.id_number AS patient_id_number, pp.email AS patient_email,
+               vr.doctor_id, dp.full_name AS doctor_name
         FROM visit_record vr
         JOIN patient_profile pp ON pp.id = vr.patient_id
+        LEFT JOIN doctor_profile dp ON dp.id = vr.doctor_id
         """;
 
     private final VisitRepository visitRepo;
@@ -44,17 +46,21 @@ public class DefaultVisitService implements VisitService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<VisitResponse> list(String visitNumber, Integer keshiTypes, String patientName) {
+    public List<VisitResponse> list(String visitNumber, Integer keshiTypes, String patientName, Long patientId, Long doctorId) {
         String sql = SELECT_SQL + """
             WHERE (CAST(:visitNumber AS TEXT) IS NULL OR vr.visit_number ILIKE '%' || :visitNumber || '%')
               AND (CAST(:keshiTypes AS INTEGER) IS NULL OR vr.keshi_types = :keshiTypes)
               AND (CAST(:patientName AS TEXT) IS NULL OR pp.full_name ILIKE '%' || :patientName || '%')
+              AND (CAST(:patientId AS BIGINT) IS NULL OR vr.patient_id = CAST(:patientId AS BIGINT))
+              AND (CAST(:doctorId AS BIGINT) IS NULL OR vr.doctor_id = CAST(:doctorId AS BIGINT))
             ORDER BY vr.created_at DESC
             """;
         return jdbcClient.sql(sql)
             .param("visitNumber", blank(visitNumber))
             .param("keshiTypes", keshiTypes)
             .param("patientName", blank(patientName))
+            .param("patientId", patientId)
+            .param("doctorId", doctorId)
             .query(this::mapRow).list();
     }
 
@@ -76,6 +82,7 @@ public class DefaultVisitService implements VisitService {
             throw new IllegalArgumentException("Visit number already exists");
         VisitRecord record = new VisitRecord(req.patientId(), visitNumber, req.fee(),
             req.keshiTypes(), req.visitDate(), req.registrationNotes(), req.visitContent());
+        record.setDoctorId(req.doctorId());
         record = visitRepo.save(record);
         eventPublisher.publishEvent(KnowledgeIngestRequestedEvent.visit(record.getId()));
         return detail(record.getId());
@@ -90,7 +97,9 @@ public class DefaultVisitService implements VisitService {
         if (req.visitDate() != null) record.setVisitDate(req.visitDate());
         record.setRegistrationNotes(req.registrationNotes());
         record.setVisitContent(req.visitContent());
-        visitRepo.save(record);
+        record.setDoctorId(req.doctorId());
+        // detail() 走 JdbcClient 直读数据库，必须先 flush JPA 脏数据。
+        visitRepo.saveAndFlush(record);
         eventPublisher.publishEvent(KnowledgeIngestRequestedEvent.visit(id));
         return detail(id);
     }
@@ -133,6 +142,8 @@ public class DefaultVisitService implements VisitService {
             rs.getString("patient_phone"),
             rs.getString("patient_id_number"),
             rs.getString("patient_email"),
+            rs.getObject("doctor_id") != null ? rs.getLong("doctor_id") : null,
+            rs.getString("doctor_name"),
             rs.getTimestamp("created_at").toInstant());
     }
 }

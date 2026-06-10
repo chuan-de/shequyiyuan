@@ -24,6 +24,8 @@ public class DoctorProfile {
     @Column(name = "id_number", unique = true)
     private String idNumber;
     private String email;
+    @Column(name = "department_id")
+    private Long departmentId;
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -51,6 +53,7 @@ public class DoctorProfile {
     public String getPhone() { return phone; }
     public String getIdNumber() { return idNumber; }
     public String getEmail() { return email; }
+    public Long getDepartmentId() { return departmentId; }
     public Instant getCreatedAt() { return createdAt; }
     public void setUuidNumber(String v) { this.uuidNumber = v; }
     public void setFullName(String v) { this.fullName = v; }
@@ -59,4 +62,5 @@ public class DoctorProfile {
     public void setPhone(String v) { this.phone = v; }
     public void setIdNumber(String v) { this.idNumber = v; }
     public void setEmail(String v) { this.email = v; }
+    public void setDepartmentId(Long v) { this.departmentId = v; }
 }

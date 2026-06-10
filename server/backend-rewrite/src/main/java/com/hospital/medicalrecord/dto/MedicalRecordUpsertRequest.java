@@ -26,5 +26,6 @@ public record MedicalRecordUpsertRequest(
         List<Map<String, Object>> prescriptionItems,
         List<Map<String, Object>> attachments,
         Instant recordDate,
+        Long visitId,
         Long version
 ) {}

@@ -9,6 +9,7 @@ public record VisitCreateRequest(
     String visitNumber,
     BigDecimal fee,
     Integer keshiTypes,
+    Long doctorId,
     Instant visitDate,
     String registrationNotes,
     String visitContent

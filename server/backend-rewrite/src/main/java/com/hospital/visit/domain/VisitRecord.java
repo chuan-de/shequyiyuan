@@ -34,6 +34,9 @@ public class VisitRecord {
     @Column(name = "visit_content", columnDefinition = "TEXT")
     private String visitContent;
 
+    @Column(name = "doctor_id")
+    private Long doctorId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -59,6 +62,7 @@ public class VisitRecord {
     public Instant getVisitDate() { return visitDate; }
     public String getRegistrationNotes() { return registrationNotes; }
     public String getVisitContent() { return visitContent; }
+    public Long getDoctorId() { return doctorId; }
     public Instant getCreatedAt() { return createdAt; }
 
     public void setVisitNumber(String v) { this.visitNumber = v; }
@@ -67,4 +71,5 @@ public class VisitRecord {
     public void setVisitDate(Instant v) { this.visitDate = v; }
     public void setRegistrationNotes(String v) { this.registrationNotes = v; }
     public void setVisitContent(String v) { this.visitContent = v; }
+    public void setDoctorId(Long v) { this.doctorId = v; }
 }
