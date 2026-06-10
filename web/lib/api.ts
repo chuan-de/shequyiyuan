@@ -82,6 +82,23 @@ export async function queryDictionaryItems(token: string, query: ListQuery & { d
   });
   return unwrapResponse(await apiFetch(`${API_ROUTES.dictionaryItems(query.dictCode)}?${p.toString()}`, { headers: authHeader(token), cache:'no-store' }));
 }
+/** 业务表单消费：仅启用项（任何登录用户可读）。 */
+export async function listEnabledDictionaryItems(token: string, dictCode: string): Promise<DictionaryItemResponse[]> {
+  return unwrapResponse(await apiFetch(`${API_ROUTES.dictionaryItems(dictCode)}/enabled`, { headers: authHeader(token), cache:'no-store' }));
+}
+export async function createDictionaryItem(token: string, payload: { dictCode: string; dictName: string; itemCode: string; itemName: string; sortOrder?: number; enabled?: boolean }): Promise<DictionaryItemResponse> {
+  return unwrapResponse(await apiFetch(`${API_ROUTES.dictionaries}/items`, { method:'POST', headers:{...authHeader(token),'Content-Type':'application/json'}, body: JSON.stringify(payload) }));
+}
+export async function updateDictionaryItem(token: string, id: number, payload: { dictCode: string; dictName: string; itemCode: string; itemName: string; sortOrder?: number; enabled?: boolean }): Promise<DictionaryItemResponse> {
+  return unwrapResponse(await apiFetch(`${API_ROUTES.dictionaries}/items/${id}`, { method:'PUT', headers:{...authHeader(token),'Content-Type':'application/json'}, body: JSON.stringify(payload) }));
+}
+export async function changeDictionaryItemStatus(token: string, id: number, enabled: boolean): Promise<DictionaryItemResponse> {
+  return unwrapResponse(await apiFetch(`${API_ROUTES.dictionaries}/items/${id}/status`, { method:'PATCH', headers:{...authHeader(token),'Content-Type':'application/json'}, body: JSON.stringify({ enabled }) }));
+}
+/** 系统配置运行参数（白名单 key → value，任何登录用户可读）。 */
+export async function fetchEffectiveConfigs(token: string): Promise<Record<string, string>> {
+  return unwrapResponse(await apiFetch(`${API_ROUTES.configs}/effective`, { headers: authHeader(token), cache:'no-store' }));
+}
 export async function listEntities(
   token: string,
   route: string,

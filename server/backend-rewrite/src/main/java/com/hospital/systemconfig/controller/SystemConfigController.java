@@ -21,6 +21,9 @@ public class SystemConfigController {
     public ApiResponse<PageResponse<SystemConfig>> list(@RequestParam(required = false) String key, @RequestParam(required = false) ConfigStatus status,
                                                 @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size,
                                                      @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "asc") String sortDir) { return ApiResponse.ok(PageQueryUtils.toPage(service.list(key, status), page, size, sortBy, sortDir)); }
+    /** 业务运行参数（白名单 + ENABLED）。任何登录用户可读，供前端页面消费。 */
+    @GetMapping("/effective")
+    public ApiResponse<java.util.Map<String, String>> effective() { return ApiResponse.ok(service.effectiveConfigs()); }
     @GetMapping("/{id}") @PreAuthorize("hasAuthority('configs:read')")
     public ApiResponse<SystemConfig> detail(@PathVariable Long id) { return ApiResponse.ok(service.detail(id)); }
     @PostMapping @PreAuthorize("hasAuthority('configs:write')")

@@ -182,14 +182,31 @@ FROM (VALUES
 ) AS v(code, name, price, stock, main_effect, side_effect, detail)
 WHERE NOT EXISTS (SELECT 1 FROM medication WHERE medication.code = v.code);
 
+-- ----------------------------------------------------------------------------
+-- 6. 系统配置（业务运行参数，后端 /api/v1/configs/effective 白名单内）
+--   system.announcement            首页公告条
+--   medication.low-stock-threshold 药品列表低库存红标阈值
+--   visit.default-fee              新建就诊默认挂号费
+-- ----------------------------------------------------------------------------
+
+INSERT INTO system_config (config_key, config_value, status, version)
+SELECT v.config_key, v.config_value, 'ENABLED', 0
+FROM (VALUES
+  ('system.announcement',            '欢迎使用社区医院管理系统。流感季节请提醒就诊患者佩戴口罩；门诊时间 8:00–17:30。'),
+  ('medication.low-stock-threshold', '50'),
+  ('visit.default-fee',              '10')
+) AS v(config_key, config_value)
+WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE system_config.config_key = v.config_key);
+
 COMMIT;
 
 -- ----------------------------------------------------------------------------
--- 6. 验证
+-- 7. 验证
 -- ----------------------------------------------------------------------------
 
 SELECT '科室' AS entity, count(*) AS rows FROM department
 UNION ALL SELECT '患者', count(*) FROM patient_profile
 UNION ALL SELECT '医生', count(*) FROM doctor_profile
 UNION ALL SELECT '家庭医生', count(*) FROM family_doctor_profile
-UNION ALL SELECT '药品', count(*) FROM medication;
+UNION ALL SELECT '药品', count(*) FROM medication
+UNION ALL SELECT '系统配置', count(*) FROM system_config;

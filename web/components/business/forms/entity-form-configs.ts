@@ -224,7 +224,7 @@ export const doctorPageConfig: EntityPageConfig = {
     { key: 'username', title: '账户' },
     { key: 'fullName', title: '医生姓名' },
     { key: 'photoUrl', title: '头像', type: 'photo' },
-    { key: 'sexTypes', title: '性别', render: (row) => row.sexTypes === 1 ? '男' : row.sexTypes === 2 ? '女' : '—' },
+    { key: 'sexTypes', title: '性别', dictCode: 'sex_types' },
     { key: 'phone', title: '联系方式' },
     { key: 'idNumber', title: '医生身份证号' },
     { key: 'email', title: '邮箱' },
@@ -235,7 +235,7 @@ export const doctorPageConfig: EntityPageConfig = {
     { key: 'uuidNumber', label: '工号', defaultValue: '' },
     { key: 'fullName', label: '医生姓名', required: true, defaultValue: '' },
     { key: 'photoUrl', label: '头像', type: 'photo', defaultValue: '' },
-    { key: 'sexTypes', label: '性别', type: 'select', options: [{ value: '1', label: '男' }, { value: '2', label: '女' }], defaultValue: '' },
+    { key: 'sexTypes', label: '性别', type: 'dict-select', dictCode: 'sex_types', defaultValue: '' },
     { key: 'phone', label: '联系方式', defaultValue: '' },
     { key: 'idNumber', label: '医生身份证号', defaultValue: '' },
     { key: 'email', label: '邮箱', defaultValue: '' },
@@ -244,7 +244,7 @@ export const doctorPageConfig: EntityPageConfig = {
   searchFields: [
     { key: 'uuidNumber', label: '工号' },
     { key: 'fullName', label: '医生姓名' },
-    { key: 'sexTypes', label: '性别', type: 'select', options: [{ value: '1', label: '男' }, { value: '2', label: '女' }] },
+    { key: 'sexTypes', label: '性别', type: 'dict-select', dictCode: 'sex_types' },
   ],
   rowActions: [
     {
@@ -274,6 +274,8 @@ export const visitPageConfig: EntityPageConfig = {
     { key: 'patientIdNumber', title: '用户身份证号' },
     { key: 'visitNumber', title: '就诊号' },
     { key: 'fee', title: '就诊费用', type: 'currency' },
+    // 科室列/表单由 VisitManagementPage 包装层联动 department 表（id → 科室名），
+    // 不走数据字典 —— 新增科室后就诊表单自动出现，无需重复维护。
     { key: 'keshiTypes', title: '科室' },
     { key: 'visitDate', title: '日期', render: (row) => row.visitDate ? String(row.visitDate).substring(0, 10) : '—' },
     { key: 'registrationNotes', title: '挂号备注' },
@@ -317,7 +319,7 @@ export const familyDoctorsPageConfig: EntityPageConfig = {
     { key: 'username', title: '账户' },
     { key: 'fullName', title: '家庭医生负责人姓名' },
     { key: 'photoUrl', title: '头像', type: 'photo' },
-    { key: 'sexTypes', title: '性别', render: (row) => row.sexTypes === 1 ? '男' : row.sexTypes === 2 ? '女' : '—' },
+    { key: 'sexTypes', title: '性别', dictCode: 'sex_types' },
     { key: 'phone', title: '联系方式' },
     { key: 'email', title: '邮箱' },
   ],
@@ -326,14 +328,14 @@ export const familyDoctorsPageConfig: EntityPageConfig = {
     { key: 'password', label: '密码', required: true, type: 'password', placeholder: '至少6位', defaultValue: '' },
     { key: 'fullName', label: '家庭医生负责人姓名', required: true, defaultValue: '' },
     { key: 'photoUrl', label: '头像', type: 'photo', defaultValue: '' },
-    { key: 'sexTypes', label: '性别', type: 'select', options: [{ value: '1', label: '男' }, { value: '2', label: '女' }], defaultValue: '' },
+    { key: 'sexTypes', label: '性别', type: 'dict-select', dictCode: 'sex_types', defaultValue: '' },
     { key: 'phone', label: '联系方式', defaultValue: '' },
     { key: 'email', label: '邮箱', defaultValue: '' },
   ],
   statusField: 'enabled',
   searchFields: [
     { key: 'fullName', label: '家庭医生负责人姓名' },
-    { key: 'sexTypes', label: '性别', type: 'select', options: [{ value: '1', label: '男' }, { value: '2', label: '女' }] },
+    { key: 'sexTypes', label: '性别', type: 'dict-select', dictCode: 'sex_types' },
   ],
   rowActions: [
     {
@@ -446,20 +448,20 @@ export const healthRecordsPageConfig: EntityPageConfig = {
     { key: 'patientIdNumber', title: '用户身份证号' },
     { key: 'title', title: '档案标题' },
     { key: 'otherMembers', title: '其他成员' },
-    { key: 'unitTypes', title: '档案单位' },
+    { key: 'unitTypes', title: '档案类型', dictCode: 'jiuankangdangan_types' },
     { key: 'recordedAt', title: '记录时间', render: (row) => row.recordedAt ? String(row.recordedAt).substring(0, 10) : '—' },
   ],
   formFields: [
     { key: 'patientId', label: '患者ID', required: true, type: 'number', defaultValue: '' },
     { key: 'title', label: '档案标题', required: true, defaultValue: '' },
     { key: 'otherMembers', label: '其他成员', defaultValue: '' },
-    { key: 'unitTypes', label: '档案单位', type: 'number', defaultValue: '' },
+    { key: 'unitTypes', label: '档案类型', type: 'dict-select', dictCode: 'jiuankangdangan_types', defaultValue: '' },
     { key: 'recordedAt', label: '记录时间', type: 'datetime', defaultValue: '' },
     { key: 'content', label: '健康状况', type: 'textarea', defaultValue: '' },
   ],
   statusField: 'enabled',
   searchFields: [
-    { key: 'unitTypes', label: '档案单位' },
+    { key: 'unitTypes', label: '档案类型', type: 'dict-select', dictCode: 'jiuankangdangan_types' },
     { key: 'patientName', label: '用户姓名' },
   ],
   labelMap: {
@@ -470,7 +472,7 @@ export const healthRecordsPageConfig: EntityPageConfig = {
     patientPhone: '联系方式',
     patientIdNumber: '用户身份证号',
     otherMembers: '其他成员',
-    unitTypes: '档案单位',
+    unitTypes: '档案类型',
     content: '健康状况',
     createdAt: '创建时间',
   },
@@ -487,20 +489,20 @@ export const departmentsPageConfig: EntityPageConfig = {
     { key: 'description', title: '科室简介' },
     { key: 'headPerson', title: '负责人' },
     { key: 'phone', title: '联系方式' },
-    { key: 'deptTypes', title: '科室类型' },
+    { key: 'deptTypes', title: '科室类别', dictCode: 'dept_types' },
   ],
   formFields: [
     { key: 'deptName', label: '科室名称', required: true, defaultValue: '' },
     { key: 'description', label: '科室简介', type: 'textarea', defaultValue: '' },
     { key: 'headPerson', label: '负责人', defaultValue: '' },
     { key: 'phone', label: '联系方式', defaultValue: '' },
-    { key: 'deptTypes', label: '科室类型', type: 'number', defaultValue: '' },
+    { key: 'deptTypes', label: '科室类别', type: 'dict-select', dictCode: 'dept_types', defaultValue: '' },
   ],
   statusField: undefined,
   searchFields: [
     { key: 'deptName', label: '科室名称' },
   ],
-  labelMap: { deptName: '科室名称', description: '科室简介', headPerson: '负责人', phone: '联系方式', deptTypes: '科室类型', createdAt: '创建时间', updatedAt: '更新时间' },
+  labelMap: { deptName: '科室名称', description: '科室简介', headPerson: '负责人', phone: '联系方式', deptTypes: '科室类别', createdAt: '创建时间', updatedAt: '更新时间' },
   createPayload: (form) => ({ deptName: form.deptName, description: form.description || undefined, headPerson: form.headPerson || undefined, phone: form.phone || undefined, deptTypes: form.deptTypes ? Number(form.deptTypes) : undefined }),
   updatePayload: (form) => ({ deptName: form.deptName, description: form.description || undefined, headPerson: form.headPerson || undefined, phone: form.phone || undefined, deptTypes: form.deptTypes ? Number(form.deptTypes) : undefined }),
 };

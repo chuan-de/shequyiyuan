@@ -10,6 +10,7 @@ import {
   getEntity, listEntities, updateEntity,
 } from '@/lib/api';
 import { hasPermission } from '@/lib/permissions';
+import { useDictionaries } from '@/lib/dictionaries';
 import { useRouter } from 'next/navigation';
 
 /** Extra wiring handed to {@link EntityFormField.customRender}. */
@@ -30,8 +31,10 @@ export type EntityFormField = {
   required?: boolean;
   placeholder?: string;
   defaultValue?: string;
-  type?: 'text' | 'password' | 'textarea' | 'number' | 'select' | 'photo' | 'datetime' | 'custom';
+  type?: 'text' | 'password' | 'textarea' | 'number' | 'select' | 'dict-select' | 'photo' | 'datetime' | 'custom';
   options?: { value: string; label: string }[];
+  /** type 为 'dict-select' 时必填：选项实时来自数据字典（仅启用项）。 */
+  dictCode?: string;
   customRender?: (value: string, onChange: (next: string) => void, mode: 'create' | 'edit', ctx: CustomFieldContext) => React.ReactNode;
 };
 
@@ -49,6 +52,8 @@ export type EntityColumn = {
   key: string;
   title: string;
   type?: 'text' | 'photo' | 'currency' | 'badge';
+  /** 设置后列值按数据字典翻译显示（码值 → 中文标签），详情弹窗同样生效。 */
+  dictCode?: string;
   render?: (row: EntityRecord) => React.ReactNode;
 };
 
@@ -78,7 +83,7 @@ export type EntityPageConfig = {
   statusField?: 'enabled' | 'status';
   createPayload: (form: Record<string, string>) => Record<string, unknown>;
   updatePayload: (form: Record<string, string>, row: EntityRecord) => Record<string, unknown>;
-  searchFields?: { key: string; label: string; type?: 'text' | 'select'; options?: { value: string; label: string }[] }[];
+  searchFields?: { key: string; label: string; type?: 'text' | 'select' | 'dict-select'; options?: { value: string; label: string }[]; dictCode?: string }[];
   rowActions?: {
     key: string;
     label: string;
@@ -309,6 +314,26 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
   const statusKey = config.statusField ?? 'enabled';
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / size)), [total, size]);
 
+  // 数据字典联动：收集本页所有引用到的 dictCode，一次性加载（带模块级缓存）。
+  const dictCodes = useMemo(() => {
+    const codes = new Set<string>();
+    config.formFields.forEach(f => { if (f.type === 'dict-select' && f.dictCode) codes.add(f.dictCode); });
+    config.columns.forEach(c => { if (c.dictCode) codes.add(c.dictCode); });
+    config.searchFields?.forEach(s => { if (s.type === 'dict-select' && s.dictCode) codes.add(s.dictCode); });
+    return Array.from(codes);
+  }, [config]);
+  const dicts = useDictionaries(token, dictCodes);
+  const dictOptions = useCallback((dictCode?: string) =>
+    (dictCode ? dicts.items[dictCode] ?? [] : []).map(i => ({ value: i.value, label: i.name })),
+  [dicts.items]);
+  // 详情弹窗的字段 → dictCode 映射（columns 优先，formFields 兜底）。
+  const detailDictMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    config.formFields.forEach(f => { if (f.type === 'dict-select' && f.dictCode) map[f.key] = f.dictCode; });
+    config.columns.forEach(c => { if (c.dictCode) map[c.key] = c.dictCode; });
+    return map;
+  }, [config]);
+
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
     setToast({ msg, type });
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -459,12 +484,12 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
       {config.searchFields && config.searchFields.length > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-3">
           {config.searchFields.map(sf => (
-            sf.type === 'select' ? (
+            sf.type === 'select' || sf.type === 'dict-select' ? (
               <Select
                 key={sf.key}
                 value={searchParams[sf.key] ?? ''}
                 onChange={(v) => handleSearchChange(sf.key, v)}
-                options={sf.options ?? []}
+                options={sf.type === 'dict-select' ? dictOptions(sf.dictCode) : sf.options ?? []}
                 placeholder={`${sf.label}（全部）`}
                 allowEmpty
                 emptyLabel={`${sf.label}（全部）`}
@@ -571,6 +596,9 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
                       if (c.type === 'currency') {
                         return typeof val === 'number' ? `¥${val.toFixed(2)}` : (val ? `¥${Number(val).toFixed(2)}` : '—');
                       }
+                      if (c.dictCode) {
+                        return dicts.labelOf(c.dictCode, val) ?? String(val ?? '—');
+                      }
                       return String(val ?? '—');
                     })()}
                   </td>
@@ -665,11 +693,11 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
                   {f.label}
                   {f.required && <span className="ml-0.5 text-rose-500">*</span>}
                 </label>
-                {f.type === 'select' ? (
+                {f.type === 'select' || f.type === 'dict-select' ? (
                   <Select
                     value={createForm[f.key] ?? ''}
                     onChange={(v) => setCreateForm(prev => ({ ...prev, [f.key]: v }))}
-                    options={f.options ?? []}
+                    options={f.type === 'dict-select' ? dictOptions(f.dictCode) : f.options ?? []}
                     placeholder={f.placeholder ?? '请选择'}
                   />
                 ) : f.type === 'textarea' ? (
@@ -739,11 +767,11 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
                     {f.label}
                     {f.required && <span className="ml-0.5 text-rose-500">*</span>}
                   </label>
-                  {f.type === 'select' ? (
+                  {f.type === 'select' || f.type === 'dict-select' ? (
                     <Select
                       value={editForm[f.key] ?? ''}
                       onChange={(v) => setEditForm(prev => ({ ...prev, [f.key]: v }))}
-                      options={f.options ?? []}
+                      options={f.type === 'dict-select' ? dictOptions(f.dictCode) : f.options ?? []}
                       placeholder={f.placeholder ?? '请选择'}
                     />
                   ) : f.type === 'textarea' ? (
@@ -810,10 +838,13 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
               return orderedKeys.map((k) => {
                 const v = (detail as Record<string, unknown>)[k];
                 const label = config.labelMap?.[k] ?? k;
+                const dictLabel = detailDictMap[k] ? dicts.labelOf(detailDictMap[k], v) : null;
                 return (
                   <div key={k} className="flex gap-4">
                     <span className="w-36 flex-shrink-0 text-sm font-semibold text-slate-500">{label}</span>
-                    <div className="min-w-0 flex-1 text-sm text-slate-800">{renderDetailValue(k, v)}</div>
+                    <div className="min-w-0 flex-1 text-sm text-slate-800">
+                      {dictLabel ? <span>{dictLabel}</span> : renderDetailValue(k, v)}
+                    </div>
                   </div>
                 );
               });
