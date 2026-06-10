@@ -105,6 +105,23 @@ export async function fetchEffectiveConfigs(token: string): Promise<Record<strin
 export async function fetchDashboardSummary(token: string): Promise<Record<string, number>> {
   return unwrapResponse(await apiFetch('/api/v1/dashboard/summary', { headers: authHeader(token), cache:'no-store' }));
 }
+
+// --- 角色权限配置（RBAC 管理页） ---
+export type RbacPermission = { id: number; code: string; name: string | null };
+export type RbacRole = { id: number; roleCode: string; roleName: string; permissionCodes: string[] };
+export async function fetchRbacPermissions(token: string): Promise<RbacPermission[]> {
+  return unwrapResponse(await apiFetch('/api/v1/rbac/permissions', { headers: authHeader(token), cache:'no-store' }));
+}
+export async function fetchRbacRoles(token: string): Promise<RbacRole[]> {
+  return unwrapResponse(await apiFetch('/api/v1/rbac/roles', { headers: authHeader(token), cache:'no-store' }));
+}
+export async function updateRolePermissions(token: string, roleId: number, permissionCodes: string[]): Promise<RbacRole> {
+  return unwrapResponse(await apiFetch(`/api/v1/rbac/roles/${roleId}/permissions`, {
+    method: 'PUT',
+    headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ permissionCodes }),
+  }));
+}
 export async function listEntities(
   token: string,
   route: string,

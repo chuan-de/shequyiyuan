@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: '/departments', label: '科室管理', icon: '🏥', permission: 'departments:read' },
   { href: '/patients', label: '患者管理', icon: '🧑‍⚕️', permission: 'patients:read' },
   { href: '/receptions', label: '前台管理', icon: '🖥️', permission: 'receptions:read' },
+  { href: '/roles', label: '角色权限', icon: '🛡️', permission: 'rbac:read' },
   { href: '/ai-consult', label: '社区 AI 问诊', icon: '🤖', permission: 'ai:consult' },
 ];
 
