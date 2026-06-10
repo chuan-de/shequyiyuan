@@ -4,7 +4,7 @@ import com.hospital.common.ApiResponse;
 import com.hospital.dictionary.dto.DictionaryDto;
 import com.hospital.dictionary.dto.DictionaryItemDto;
 import com.hospital.dictionary.dto.DictionaryItemUpsertRequest;
-import com.hospital.dictionary.dto.PageResponse;
+import com.hospital.common.PageResponse;
 import com.hospital.dictionary.service.DictionaryService;
 import jakarta.validation.Valid;
 import java.security.Principal;

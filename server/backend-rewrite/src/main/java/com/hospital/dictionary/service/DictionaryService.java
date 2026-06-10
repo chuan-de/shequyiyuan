@@ -4,7 +4,7 @@ import com.hospital.common.NotFoundException;
 import com.hospital.dictionary.dto.DictionaryDto;
 import com.hospital.dictionary.dto.DictionaryItemDto;
 import com.hospital.dictionary.dto.DictionaryItemUpsertRequest;
-import com.hospital.dictionary.dto.PageResponse;
+import com.hospital.common.PageResponse;
 import com.hospital.dictionary.entity.DictionaryItem;
 import com.hospital.dictionary.entity.DictionaryOperationLog;
 import com.hospital.dictionary.repository.DictionaryItemRepository;

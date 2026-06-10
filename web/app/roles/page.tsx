@@ -27,8 +27,6 @@ const MODULE_LABELS: Record<string, string> = {
   'configs': '系统配置',
   'ai': 'AI 功能',
   'rbac': '角色权限',
-  'bingli': '病历（兼容旧码）',
-  'jiuankangdangan': '健康档案（已下线）',
 };
 
 /** 动作后缀 → 中文标签。 */
