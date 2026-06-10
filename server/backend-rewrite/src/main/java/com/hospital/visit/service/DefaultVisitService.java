@@ -2,6 +2,7 @@ package com.hospital.visit.service;
 
 import com.hospital.ai.ingestion.KnowledgeIngestRequestedEvent;
 import com.hospital.common.NotFoundException;
+import com.hospital.common.PageResponse;
 import com.hospital.visit.domain.VisitRecord;
 import com.hospital.visit.dto.VisitCreateRequest;
 import com.hospital.visit.dto.VisitResponse;
@@ -44,24 +45,36 @@ public class DefaultVisitService implements VisitService {
         this.eventPublisher = eventPublisher;
     }
 
+    private static final String LIST_WHERE = """
+        WHERE (CAST(:visitNumber AS TEXT) IS NULL OR vr.visit_number ILIKE '%' || :visitNumber || '%')
+          AND (CAST(:keshiTypes AS INTEGER) IS NULL OR vr.keshi_types = :keshiTypes)
+          AND (CAST(:patientName AS TEXT) IS NULL OR pp.full_name ILIKE '%' || :patientName || '%')
+          AND (CAST(:patientId AS BIGINT) IS NULL OR vr.patient_id = CAST(:patientId AS BIGINT))
+          AND (CAST(:doctorId AS BIGINT) IS NULL OR vr.doctor_id = CAST(:doctorId AS BIGINT))
+        """;
+
     @Override
     @Transactional(readOnly = true)
-    public List<VisitResponse> list(String visitNumber, Integer keshiTypes, String patientName, Long patientId, Long doctorId) {
-        String sql = SELECT_SQL + """
-            WHERE (CAST(:visitNumber AS TEXT) IS NULL OR vr.visit_number ILIKE '%' || :visitNumber || '%')
-              AND (CAST(:keshiTypes AS INTEGER) IS NULL OR vr.keshi_types = :keshiTypes)
-              AND (CAST(:patientName AS TEXT) IS NULL OR pp.full_name ILIKE '%' || :patientName || '%')
-              AND (CAST(:patientId AS BIGINT) IS NULL OR vr.patient_id = CAST(:patientId AS BIGINT))
-              AND (CAST(:doctorId AS BIGINT) IS NULL OR vr.doctor_id = CAST(:doctorId AS BIGINT))
-            ORDER BY vr.created_at DESC
-            """;
-        return jdbcClient.sql(sql)
+    public PageResponse<VisitResponse> list(String visitNumber, Integer keshiTypes, String patientName, Long patientId, Long doctorId, int page, int size) {
+        int safeSize = Math.max(size, 1);
+        int safePage = Math.max(page, 1);
+        long total = jdbcClient.sql("SELECT COUNT(*) FROM visit_record vr JOIN patient_profile pp ON pp.id = vr.patient_id " + LIST_WHERE)
             .param("visitNumber", blank(visitNumber))
             .param("keshiTypes", keshiTypes)
             .param("patientName", blank(patientName))
             .param("patientId", patientId)
             .param("doctorId", doctorId)
+            .query(Long.class).single();
+        List<VisitResponse> records = jdbcClient.sql(SELECT_SQL + LIST_WHERE + "ORDER BY vr.created_at DESC LIMIT :limit OFFSET :offset")
+            .param("visitNumber", blank(visitNumber))
+            .param("keshiTypes", keshiTypes)
+            .param("patientName", blank(patientName))
+            .param("patientId", patientId)
+            .param("doctorId", doctorId)
+            .param("limit", safeSize)
+            .param("offset", (safePage - 1L) * safeSize)
             .query(this::mapRow).list();
+        return new PageResponse<>(records, total, safePage, safeSize);
     }
 
     @Override

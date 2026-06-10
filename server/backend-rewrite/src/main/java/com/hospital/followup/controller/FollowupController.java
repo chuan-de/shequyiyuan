@@ -1,14 +1,12 @@
 package com.hospital.followup.controller;
 
 import com.hospital.common.ApiResponse;
-import com.hospital.common.PageQueryUtils;
 import com.hospital.common.PageResponse;
 import com.hospital.followup.dto.FollowupResponse;
 import com.hospital.followup.dto.FollowupUpsertRequest;
 import com.hospital.followup.service.FollowupService;
 import jakarta.validation.Valid;
 import java.security.Principal;
-import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,11 +23,8 @@ public class FollowupController {
             @RequestParam(required = false) Long patientId,
             @RequestParam(required = false) String patientName,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDir) {
-        List<FollowupResponse> all = service.list(patientId, patientName);
-        return ApiResponse.ok(PageQueryUtils.toPage(all, page, size, sortBy, sortDir));
+            @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.ok(service.list(patientId, patientName, page, size));
     }
 
     @GetMapping("/{id}")

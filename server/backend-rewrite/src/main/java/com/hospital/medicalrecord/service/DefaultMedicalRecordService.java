@@ -5,6 +5,7 @@ import com.hospital.medicalrecord.domain.MedicalRecord;
 import com.hospital.medicalrecord.domain.MedicalRecordStatus;
 import com.hospital.medicalrecord.dto.MedicalRecordUpsertRequest;
 import com.hospital.common.NotFoundException;
+import com.hospital.common.PageResponse;
 import com.hospital.medicalrecord.repository.MedicalRecordRepository;
 import com.hospital.medication.service.MedicationService;
 import com.hospital.visit.domain.VisitRecord;
@@ -14,6 +15,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,14 +42,24 @@ public class DefaultMedicalRecordService implements MedicalRecordService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MedicalRecord> list(String keyword, MedicalRecordStatus status, Long patientId) {
-        return repository.findAll().stream()
-                .filter(b -> status == null || b.getStatus() == status)
-                .filter(b -> patientId == null || patientId.equals(b.getPatientId()))
-                .filter(b -> keyword == null || keyword.isBlank() ||
-                        (b.getCaseName() != null && b.getCaseName().toLowerCase().contains(keyword.toLowerCase())) ||
-                        (b.getPatientName() != null && b.getPatientName().toLowerCase().contains(keyword.toLowerCase())))
-                .toList();
+    public PageResponse<MedicalRecord> list(String keyword, MedicalRecordStatus status, Long patientId, int page, int size) {
+        Specification<MedicalRecord> spec = (root, query, cb) -> {
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            if (status != null) predicates.add(cb.equal(root.get("status"), status));
+            if (patientId != null) predicates.add(cb.equal(root.get("patientId"), patientId));
+            if (keyword != null && !keyword.isBlank()) {
+                String like = "%" + keyword.toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("caseName")), like),
+                        cb.like(cb.lower(root.get("patientName")), like)));
+            }
+            return cb.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
+        int safeSize = Math.max(size, 1);
+        int safePage = Math.max(page, 1);
+        Page<MedicalRecord> result = repository.findAll(spec,
+                PageRequest.of(safePage - 1, safeSize, Sort.by(Sort.Direction.DESC, "id")));
+        return new PageResponse<>(result.getContent(), result.getTotalElements(), safePage, safeSize);
     }
 
     @Override

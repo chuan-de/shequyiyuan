@@ -5,11 +5,9 @@ import com.hospital.visit.dto.VisitResponse;
 import com.hospital.visit.dto.VisitUpdateRequest;
 import com.hospital.visit.service.VisitService;
 import com.hospital.common.ApiResponse;
-import com.hospital.common.PageQueryUtils;
 import com.hospital.common.PageResponse;
 import jakarta.validation.Valid;
 import java.security.Principal;
-import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,11 +27,8 @@ public class VisitController {
         @RequestParam(required = false) Long patientId,
         @RequestParam(required = false) Long doctorId,
         @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "10") int size,
-        @RequestParam(required = false) String sortBy,
-        @RequestParam(defaultValue = "asc") String sortDir) {
-        List<VisitResponse> all = service.list(visitNumber, keshiTypes, patientName, patientId, doctorId);
-        return ApiResponse.ok(PageQueryUtils.toPage(all, page, size, sortBy, sortDir));
+        @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.ok(service.list(visitNumber, keshiTypes, patientName, patientId, doctorId, page, size));
     }
 
     @GetMapping("/{id}")

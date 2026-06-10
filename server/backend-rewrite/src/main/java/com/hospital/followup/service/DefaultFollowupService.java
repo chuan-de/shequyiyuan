@@ -1,6 +1,7 @@
 package com.hospital.followup.service;
 
 import com.hospital.common.NotFoundException;
+import com.hospital.common.PageResponse;
 import com.hospital.followup.domain.PatientFollowup;
 import com.hospital.followup.dto.FollowupResponse;
 import com.hospital.followup.dto.FollowupUpsertRequest;
@@ -40,19 +41,30 @@ public class DefaultFollowupService implements FollowupService {
         this.jdbcClient = jdbcClient;
     }
 
+    private static final String LIST_WHERE = """
+            WHERE (CAST(:patientId AS BIGINT) IS NULL OR f.patient_id = CAST(:patientId AS BIGINT))
+              AND (CAST(:patientName AS TEXT) IS NULL OR pp.full_name ILIKE '%' || :patientName || '%')
+            """;
+
     @Override
     @Transactional(readOnly = true)
-    public List<FollowupResponse> list(Long patientId, String patientName) {
-        String sql = SELECT_SQL + """
-                WHERE (CAST(:patientId AS BIGINT) IS NULL OR f.patient_id = CAST(:patientId AS BIGINT))
-                  AND (CAST(:patientName AS TEXT) IS NULL OR pp.full_name ILIKE '%' || :patientName || '%')
-                ORDER BY f.measured_at DESC, f.id DESC
-                """;
-        return jdbcClient.sql(sql)
+    public PageResponse<FollowupResponse> list(Long patientId, String patientName, int page, int size) {
+        int safeSize = Math.max(size, 1);
+        int safePage = Math.max(page, 1);
+        String name = (patientName == null || patientName.isBlank()) ? null : patientName;
+        long total = jdbcClient.sql("SELECT COUNT(*) FROM patient_followup f JOIN patient_profile pp ON pp.id = f.patient_id " + LIST_WHERE)
                 .param("patientId", patientId)
-                .param("patientName", (patientName == null || patientName.isBlank()) ? null : patientName)
+                .param("patientName", name)
+                .query(Long.class).single();
+        List<FollowupResponse> records = jdbcClient
+                .sql(SELECT_SQL + LIST_WHERE + "ORDER BY f.measured_at DESC, f.id DESC LIMIT :limit OFFSET :offset")
+                .param("patientId", patientId)
+                .param("patientName", name)
+                .param("limit", safeSize)
+                .param("offset", (safePage - 1L) * safeSize)
                 .query(this::mapRow)
                 .list();
+        return new PageResponse<>(records, total, safePage, safeSize);
     }
 
     @Override
