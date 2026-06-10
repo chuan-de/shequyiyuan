@@ -1,10 +1,9 @@
 'use client';
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { PhotoUploader } from '@/components/ui/file-upload';
 import {
   changeEntityStatus, createEntity, currentUser, deleteEntity, EntityRecord,
   getEntity, listEntities, updateEntity,
@@ -12,255 +11,15 @@ import {
 import { hasPermission } from '@/lib/permissions';
 import { useDictionaries } from '@/lib/dictionaries';
 import { useRouter } from 'next/navigation';
+import { initForm, type EntityPageConfig, type PromptOptions } from './entity-page/types';
+import { renderDetailValue, StatusBadge } from './entity-page/detail-value';
+import { Modal } from './entity-page/modal';
+import { EntityFormFields } from './entity-page/entity-form-fields';
 
-/** Extra wiring handed to {@link EntityFormField.customRender}. */
-export type CustomFieldContext = {
-  /** Read another field's current value from the surrounding form. */
-  getFormValue: (key: string) => string;
-  /** Patch any field in the surrounding form (used by the AI suggestion panel). */
-  setFormValue: (key: string, value: string) => void;
-  /** Batch patch — applies multiple fields atomically in one re-render. */
-  patchForm: (patch: Record<string, string>) => void;
-  /** Current user's permissions, so the custom renderer can gate UI elements. */
-  permissions: string[];
-};
-
-export type EntityFormField = {
-  key: string;
-  label: string;
-  required?: boolean;
-  placeholder?: string;
-  defaultValue?: string;
-  type?: 'text' | 'password' | 'textarea' | 'number' | 'select' | 'dict-select' | 'photo' | 'datetime' | 'date' | 'custom';
-  options?: { value: string; label: string }[];
-  /** type 为 'dict-select' 时必填：选项实时来自数据字典（仅启用项）。 */
-  dictCode?: string;
-  customRender?: (value: string, onChange: (next: string) => void, mode: 'create' | 'edit', ctx: CustomFieldContext) => React.ReactNode;
-};
-
-function isoToLocalInput(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '';
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tz).toISOString().slice(0, 16);
-}
-function nowLocalInput(): string {
-  return isoToLocalInput(new Date().toISOString());
-}
-
-export type EntityColumn = {
-  key: string;
-  title: string;
-  type?: 'text' | 'photo' | 'currency' | 'badge';
-  /** 设置后列值按数据字典翻译显示（码值 → 中文标签），详情弹窗同样生效。 */
-  dictCode?: string;
-  render?: (row: EntityRecord) => React.ReactNode;
-};
-
-export type PromptOptions = {
-  title: string;
-  label?: string;
-  placeholder?: string;
-  type?: 'text' | 'password' | 'number';
-  initialValue?: string;
-  confirmText?: string;
-  validate?: (value: string) => string | null;
-};
-
-export type ActionHelpers = {
-  token: string;
-  reload: () => void;
-  showToast: (msg: string, type?: 'success' | 'error') => void;
-  prompt: (opts: PromptOptions) => Promise<string | null>;
-};
-
-export type EntityPageConfig = {
-  title: string;
-  route: string;
-  permissionPrefix: string;
-  columns: EntityColumn[];
-  formFields: EntityFormField[];
-  statusField?: 'enabled' | 'status';
-  createPayload: (form: Record<string, string>) => Record<string, unknown>;
-  updatePayload: (form: Record<string, string>, row: EntityRecord) => Record<string, unknown>;
-  searchFields?: { key: string; label: string; type?: 'text' | 'select' | 'dict-select'; options?: { value: string; label: string }[]; dictCode?: string }[];
-  rowActions?: {
-    key: string;
-    label: string;
-    permission?: string;
-    variant?: 'primary' | 'danger';
-    onClick: (row: EntityRecord, helpers: ActionHelpers) => void;
-  }[];
-  labelMap?: Record<string, string>;
-  /** 进入页面即弹出新建表单（配合 formFields defaultValue 实现跨页预填，如就诊→写病历）。 */
-  autoOpenCreate?: boolean;
-};
-
-function initForm(fields: EntityFormField[], row?: EntityRecord | null): Record<string, string> {
-  return fields.reduce<Record<string, string>>((acc, f) => {
-    const v = row?.[f.key];
-    if (f.type === 'datetime') {
-      if (typeof v === 'string' && v) acc[f.key] = isoToLocalInput(v);
-      else if (!row) acc[f.key] = nowLocalInput();
-      else acc[f.key] = '';
-    } else if (f.type === 'date') {
-      // 后端 LocalDate 序列化为 yyyy-MM-dd，直接截取适配 <input type="date">。
-      acc[f.key] = typeof v === 'string' && v ? v.slice(0, 10) : (f.defaultValue ?? '');
-    } else if (f.type === 'custom') {
-      if (v !== undefined && v !== null && typeof v !== 'string') {
-        acc[f.key] = JSON.stringify(v);
-      } else if (typeof v === 'string') {
-        acc[f.key] = v;
-      } else {
-        acc[f.key] = f.defaultValue ?? '';
-      }
-    } else {
-      acc[f.key] = typeof v === 'string' ? v : (typeof v === 'number' ? String(v) : f.defaultValue ?? '');
-    }
-    return acc;
-  }, {});
-}
-
-const PHOTO_URL_RE = /\/api\/v1\/photos\/[^/]+\/content/;
-const DATETIME_KEYS = new Set([
-  'createdAt', 'updatedAt', 'recordDate', 'recordedAt', 'visitDate',
-  'lastLoginAt', 'aiConsentAt', 'consentedAt',
-]);
-
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/**
- * Pretty-print a detail-view value.
- * - photo URLs become thumbnails
- * - datetime-looking keys get formatted
- * - arrays of prescription-like objects render as a list
- * - arrays of attachment-like objects render as image/PDF chips
- * - generic objects fall back to indented JSON
- */
-function renderDetailValue(key: string, value: unknown): ReactNode {
-  if (value === null || value === undefined || value === '') return <span className="text-slate-400">—</span>;
-
-  // Key-aware mappings for enum-ish fields shared across modules.
-  if (key === 'sexTypes' && (value === 1 || value === '1')) return <span>男</span>;
-  if (key === 'sexTypes' && (value === 2 || value === '2')) return <span>女</span>;
-  if (key === 'enabled' || key === 'status') {
-    if (value === true || value === 'ENABLED' || value === 'ACTIVE' || value === 'COMPLETED') {
-      return <span className="badge badge-green">启用</span>;
-    }
-    if (value === false || value === 'DISABLED' || value === 'INACTIVE' || value === 'SUSPENDED' || value === 'ARCHIVED' || value === 'CANCELLED') {
-      return <span className="badge badge-red">禁用</span>;
-    }
-  }
-
-  if (typeof value === 'string') {
-    if (PHOTO_URL_RE.test(value)) {
-      return <img src={value} alt="" className="h-20 w-20 rounded-lg border border-slate-200 object-cover" />;
-    }
-    if (DATETIME_KEYS.has(key) && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
-      return <span>{formatDateTime(value)}</span>;
-    }
-    return <span className="whitespace-pre-wrap break-words">{value}</span>;
-  }
-
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return <span>{String(value)}</span>;
-  }
-
-  if (Array.isArray(value)) {
-    if (value.length === 0) return <span className="text-slate-400">—</span>;
-
-    // Prescription-like: [{ medicationId|medicationName, qty|quantity, ... }]
-    if (value.every((v) => typeof v === 'object' && v && ('medicationName' in v || 'medicationId' in v))) {
-      return (
-        <ul className="space-y-1">
-          {value.map((item: Record<string, unknown>, idx) => (
-            <li key={idx} className="rounded border border-slate-200 bg-slate-50 px-2 py-1">
-              <span className="font-medium">{String(item.medicationName ?? item.medicationId ?? '—')}</span>
-              <span className="ml-2 text-slate-500">× {String(item.qty ?? item.quantity ?? 1)}</span>
-            </li>
-          ))}
-        </ul>
-      );
-    }
-
-    // Attachment-like: [{ url, filename, contentType }]
-    if (value.every((v) => typeof v === 'object' && v && 'url' in v)) {
-      return (
-        <div className="flex flex-wrap gap-2">
-          {value.map((item: Record<string, unknown>, idx) => {
-            const url = String(item.url ?? '');
-            const ct = String(item.contentType ?? '');
-            const isPdf = ct.includes('pdf') || url.toLowerCase().endsWith('.pdf');
-            return isPdf ? (
-              <a key={idx} href={url} target="_blank" rel="noreferrer"
-                 className="inline-flex h-20 w-20 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-xs font-medium text-rose-600">
-                PDF
-              </a>
-            ) : (
-              <a key={idx} href={url} target="_blank" rel="noreferrer">
-                <img src={url} alt={String(item.filename ?? '')}
-                     className="h-20 w-20 rounded-lg border border-slate-200 object-cover" />
-              </a>
-            );
-          })}
-        </div>
-      );
-    }
-
-    // Generic array of primitives or objects.
-    return (
-      <ul className="list-inside list-disc space-y-0.5">
-        {value.map((v, idx) => (
-          <li key={idx}>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</li>
-        ))}
-      </ul>
-    );
-  }
-
-  if (typeof value === 'object') {
-    return (
-      <pre className="overflow-auto rounded bg-slate-50 p-2 text-xs">{JSON.stringify(value, null, 2)}</pre>
-    );
-  }
-
-  return <span>{String(value)}</span>;
-}
-
-function StatusBadge({ value }: { value: unknown }) {
-  if (value === true || value === 'ACTIVE' || value === 'ENABLED' || value === 'COMPLETED') {
-    return <span className="badge badge-green">{String(value)}</span>;
-  }
-  if (value === false || value === 'INACTIVE' || value === 'DISABLED' || value === 'CANCELLED' || value === 'SUSPENDED' || value === 'ARCHIVED') {
-    return <span className="badge badge-red">{String(value)}</span>;
-  }
-  return <span className="badge badge-gray">{String(value ?? '-')}</span>;
-}
-
-function Modal({ title, onClose, children, footer }: {
-  title: string; onClose: () => void; children: React.ReactNode; footer: React.ReactNode;
-}) {
-  return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-box">
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
-        <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">{footer}</div>
-      </div>
-    </div>
-  );
-}
+export type {
+  ActionHelpers, CustomFieldContext, EntityColumn, EntityFormField,
+  EntityPageConfig, PromptOptions,
+} from './entity-page/types';
 
 export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
   const router = useRouter();
@@ -701,62 +460,14 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
             </>
           }
         >
-          <div className="space-y-4">
-            {config.formFields.map(f => (
-              <div key={f.key}>
-                <label className="label">
-                  {f.label}
-                  {f.required && <span className="ml-0.5 text-rose-500">*</span>}
-                </label>
-                {f.type === 'select' || f.type === 'dict-select' ? (
-                  <Select
-                    value={createForm[f.key] ?? ''}
-                    onChange={(v) => setCreateForm(prev => ({ ...prev, [f.key]: v }))}
-                    options={f.type === 'dict-select' ? dictOptions(f.dictCode) : f.options ?? []}
-                    placeholder={f.placeholder ?? '请选择'}
-                  />
-                ) : f.type === 'textarea' ? (
-                  <textarea
-                    value={createForm[f.key] ?? ''}
-                    placeholder={f.placeholder ?? `请输入${f.label}`}
-                    onChange={e => setCreateForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    className="input w-full min-h-[80px]"
-                    rows={3}
-                  />
-                ) : f.type === 'photo' ? (
-                  <PhotoUploader
-                    value={createForm[f.key] ?? ''}
-                    onChange={url => setCreateForm(prev => ({ ...prev, [f.key]: url }))}
-                  />
-                ) : f.type === 'datetime' || f.type === 'date' ? (
-                  <Input
-                    type={f.type === 'date' ? 'date' : 'datetime-local'}
-                    value={createForm[f.key] ?? ''}
-                    onChange={e => setCreateForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  />
-                ) : f.type === 'custom' && f.customRender ? (
-                  f.customRender(
-                    createForm[f.key] ?? '',
-                    (next) => setCreateForm(prev => ({ ...prev, [f.key]: next })),
-                    'create',
-                    {
-                      getFormValue: (k) => createForm[k] ?? '',
-                      setFormValue: (k, v) => setCreateForm(prev => ({ ...prev, [k]: v })),
-                      patchForm: (patch) => setCreateForm(prev => ({ ...prev, ...patch })),
-                      permissions,
-                    }
-                  )
-                ) : (
-                  <Input
-                    type={f.type === 'password' ? 'password' : f.type === 'number' ? 'number' : 'text'}
-                    value={createForm[f.key] ?? ''}
-                    placeholder={f.placeholder ?? `请输入${f.label}`}
-                    onChange={e => setCreateForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
+          <EntityFormFields
+            fields={config.formFields}
+            form={createForm}
+            setForm={setCreateForm}
+            mode="create"
+            dictOptions={dictOptions}
+            permissions={permissions}
+          />
         </Modal>
       )}
 
@@ -772,66 +483,14 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
             </>
           }
         >
-          <div className="space-y-4">
-            {config.formFields.map(f => {
-              // Skip password fields in edit mode
-              if (f.type === 'password') return null;
-              return (
-                <div key={f.key}>
-                  <label className="label">
-                    {f.label}
-                    {f.required && <span className="ml-0.5 text-rose-500">*</span>}
-                  </label>
-                  {f.type === 'select' || f.type === 'dict-select' ? (
-                    <Select
-                      value={editForm[f.key] ?? ''}
-                      onChange={(v) => setEditForm(prev => ({ ...prev, [f.key]: v }))}
-                      options={f.type === 'dict-select' ? dictOptions(f.dictCode) : f.options ?? []}
-                      placeholder={f.placeholder ?? '请选择'}
-                    />
-                  ) : f.type === 'textarea' ? (
-                    <textarea
-                      value={editForm[f.key] ?? ''}
-                      placeholder={f.placeholder ?? `请输入${f.label}`}
-                      onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      className="input w-full min-h-[80px]"
-                      rows={3}
-                    />
-                  ) : f.type === 'photo' ? (
-                    <PhotoUploader
-                      value={editForm[f.key] ?? ''}
-                      onChange={url => setEditForm(prev => ({ ...prev, [f.key]: url }))}
-                    />
-                  ) : f.type === 'datetime' || f.type === 'date' ? (
-                    <Input
-                      type={f.type === 'date' ? 'date' : 'datetime-local'}
-                      value={editForm[f.key] ?? ''}
-                      onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    />
-                  ) : f.type === 'custom' && f.customRender ? (
-                    f.customRender(
-                      editForm[f.key] ?? '',
-                      (next) => setEditForm(prev => ({ ...prev, [f.key]: next })),
-                      'edit',
-                      {
-                        getFormValue: (k) => editForm[k] ?? '',
-                        setFormValue: (k, v) => setEditForm(prev => ({ ...prev, [k]: v })),
-                        patchForm: (patch) => setEditForm(prev => ({ ...prev, ...patch })),
-                        permissions,
-                      }
-                    )
-                  ) : (
-                    <Input
-                      type={f.type === 'number' ? 'number' : 'text'}
-                      value={editForm[f.key] ?? ''}
-                      placeholder={f.placeholder ?? `请输入${f.label}`}
-                      onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <EntityFormFields
+            fields={config.formFields}
+            form={editForm}
+            setForm={setEditForm}
+            mode="edit"
+            dictOptions={dictOptions}
+            permissions={permissions}
+          />
         </Modal>
       )}
 
