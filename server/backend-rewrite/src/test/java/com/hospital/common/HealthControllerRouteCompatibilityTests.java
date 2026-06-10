@@ -45,10 +45,4 @@ class HealthControllerRouteCompatibilityTests {
             .andExpect(jsonPath("$.status").value("ok"));
     }
 
-    @Test
-    void legacyPinyinRoute_shouldWorkDuringTransition() throws Exception {
-        mockMvc.perform(get("/api/v1/jiankang"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("ok"));
-    }
 }

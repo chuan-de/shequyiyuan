@@ -123,10 +123,10 @@ class ContractControllerIntegrationTests {
         mockMvc.perform(patch("/api/v1/family-doctor-contracts/" + contractId + "/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"targetStatus":"CANCELLED"}
+                                {"targetStatus":"TERMINATED"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("CANCELLED"));
+                .andExpect(jsonPath("$.data.status").value("TERMINATED"));
 
         mockMvc.perform(post("/api/v1/family-doctor-contracts")
                         .contentType(MediaType.APPLICATION_JSON)

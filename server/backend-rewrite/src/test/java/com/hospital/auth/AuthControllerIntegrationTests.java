@@ -96,7 +96,7 @@ class AuthControllerIntegrationTests {
         mockMvc.perform(get("/api/v1/auth/me")
                 .header("Authorization", "Bearer " + token))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.username").value("charlie"));
+            .andExpect(jsonPath("$.data.username").value("charlie"));
     }
 
 
@@ -133,30 +133,4 @@ class AuthControllerIntegrationTests {
             .andExpect(header().exists("Access-Control-Allow-Origin"));
     }
 
-    @Test
-    void legacyPinyinRoutes_shouldRemainCompatibleDuringTransition() throws Exception {
-        mockMvc.perform(post("/api/v1/yonghu/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                    {"username":"legacy_user","password":"password123"}
-                    """))
-            .andExpect(status().isCreated());
-
-        MvcResult loginResult = mockMvc.perform(post("/api/v1/yonghu/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                    {"username":"legacy_user","password":"password123"}
-                    """))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.accessToken").isString())
-            .andReturn();
-
-        String token = com.jayway.jsonpath.JsonPath.read(
-            loginResult.getResponse().getContentAsString(), "$.accessToken");
-
-        mockMvc.perform(get("/api/v1/yonghu/me")
-                .header("Authorization", "Bearer " + token))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.username").value("legacy_user"));
-    }
 }

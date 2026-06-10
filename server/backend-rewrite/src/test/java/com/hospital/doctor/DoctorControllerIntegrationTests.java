@@ -3,6 +3,8 @@ package com.hospital.doctor;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -38,6 +40,9 @@ class DoctorControllerIntegrationTests {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @Test
     void list_withoutAuthentication_shouldReturn401() throws Exception {
         mockMvc.perform(get("/api/v1/doctors")).andExpect(status().isUnauthorized());
@@ -49,25 +54,24 @@ class DoctorControllerIntegrationTests {
         mockMvc.perform(post("/api/v1/doctors")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Dr. Zhang","department":"内科"}
+                                {"username":"doc_403","password":"secret1","fullName":"张医生"}
                                 """))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(authorities = {"doctors:read", "doctors:write", "doctors:status"})
+    @WithMockUser(authorities = {"doctors:read", "doctors:write", "doctors:status", "doctors:reset-password"})
     void crudFlow_shouldSucceed() throws Exception {
         String created = mockMvc.perform(post("/api/v1/doctors")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Dr. Zhang","department":"内科"}
+                                {"username":"doc_crud","password":"secret1","fullName":"张医生","uuidNumber":"YS001","phone":"13800138001"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.name").value("Dr. Zhang"))
-                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
-                .andReturn().getResponse().getContentAsString();
-
-        String id = created.replaceAll(".*\"id\":(\\d+).*", "$1");
+                .andExpect(jsonPath("$.data.fullName").value("张医生"))
+                .andExpect(jsonPath("$.data.enabled").value(true))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        long id = objectMapper.readTree(created).get("data").get("id").asLong();
 
         mockMvc.perform(get("/api/v1/doctors"))
                 .andExpect(status().isOk())
@@ -76,18 +80,25 @@ class DoctorControllerIntegrationTests {
         mockMvc.perform(put("/api/v1/doctors/" + id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Dr. Zhang Wei","department":"外科"}
+                                {"fullName":"张伟医生","uuidNumber":"YS001","phone":"13800138001"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.department").value("外科"));
+                .andExpect(jsonPath("$.data.fullName").value("张伟医生"));
 
         mockMvc.perform(patch("/api/v1/doctors/" + id + "/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"targetStatus":"INACTIVE"}
+                                {"enabled":false}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("INACTIVE"));
+                .andExpect(jsonPath("$.data.enabled").value(false));
+
+        mockMvc.perform(patch("/api/v1/doctors/" + id + "/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"newPassword":"newsecret1"}
+                                """))
+                .andExpect(status().isOk());
     }
 
     @Test

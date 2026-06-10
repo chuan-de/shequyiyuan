@@ -3,6 +3,8 @@ package com.hospital.reception;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -38,6 +40,9 @@ class ReceptionControllerIntegrationTests {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @Test
     void list_withoutAuthentication_shouldReturn401() throws Exception {
         mockMvc.perform(get("/api/v1/receptions")).andExpect(status().isUnauthorized());
@@ -66,9 +71,11 @@ class ReceptionControllerIntegrationTests {
                 .andExpect(jsonPath("$.data.fullName").value("赵六"))
                 .andExpect(jsonPath("$.data.uuidNumber").value("GZ001"))
                 .andExpect(jsonPath("$.data.enabled").value(true))
-                .andReturn().getResponse().getContentAsString();
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 
-        String id = created.replaceAll(".*\"id\":(\\d+).*", "$1");
+        // 不能用正则从 JSON 抠 id：getContentAsString() 默认按 ISO-8859-1 解码，
+        // 中文 UTF-8 字节里会冒出 U+0085 行分隔符把贪婪 `.*` 截断，产出垃圾 id。
+        long id = objectMapper.readTree(created).get("data").get("id").asLong();
 
         mockMvc.perform(get("/api/v1/receptions"))
                 .andExpect(status().isOk())
