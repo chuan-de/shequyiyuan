@@ -33,7 +33,7 @@
 
 ### Feature 2：患者私域 RAG
 - 触发：医生/患者在患者详情页 "AI 问询" 侧栏问问题
-- 数据：患者历次 medical_record / health_record / visit 切片向量化
+- 数据：患者历次 medical_record / visit 切片向量化（health_record 源已随模块于 V50 下线）
 - 隐私：`WHERE patient_id = ?` 强过滤；首次使用需患者授权
 - 输出：答案 + 引用脚注（可点回原病历）
 

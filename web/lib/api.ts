@@ -62,7 +62,6 @@ const statusChangeByRoute: Partial<{ [R in StatusManagedRoute]: (enabled: boolea
   [API_ROUTES.medications]: (enabled) => ({ targetStatus: enabled ? 'ENABLED' : 'DISABLED' }),
   [API_ROUTES.configs]: (enabled) => ({ targetStatus: enabled ? 'ENABLED' : 'DISABLED' }),
   [API_ROUTES.medicalRecords]: (enabled) => ({ targetStatus: enabled ? 'ACTIVE' : 'ARCHIVED' }),
-  [API_ROUTES.healthRecords]: (enabled) => ({ targetStatus: enabled ? 'ACTIVE' : 'ARCHIVED' }),
   [API_ROUTES.familyDoctorContracts]: (enabled) => ({ targetStatus: enabled ? 'ACTIVE' : 'TERMINATED' })
 };
 

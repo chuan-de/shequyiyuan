@@ -459,52 +459,6 @@ export const medicalRecordsPageConfig: EntityPageConfig = {
   })
 };
 
-export const healthRecordsPageConfig: EntityPageConfig = {
-  title: '健康档案',
-  route: API_ROUTES.healthRecords,
-  permissionPrefix: 'health-records',
-  columns: [
-    { key: 'patientName', title: '用户姓名' },
-    { key: 'patientPhotoUrl', title: '头像', type: 'photo' },
-    { key: 'patientPhone', title: '联系方式' },
-    { key: 'patientIdNumber', title: '用户身份证号' },
-    { key: 'title', title: '档案标题' },
-    { key: 'otherMembers', title: '其他成员' },
-    { key: 'unitTypes', title: '档案类型', dictCode: 'jiuankangdangan_types' },
-    { key: 'recordedAt', title: '记录时间', render: (row) => row.recordedAt ? String(row.recordedAt).substring(0, 10) : '—' },
-  ],
-  formFields: [
-    { key: 'patientId', label: '患者ID', required: true, type: 'number', defaultValue: '' },
-    { key: 'title', label: '档案标题', required: true, defaultValue: '' },
-    { key: 'otherMembers', label: '其他成员', defaultValue: '' },
-    { key: 'unitTypes', label: '档案类型', type: 'dict-select', dictCode: 'jiuankangdangan_types', defaultValue: '' },
-    { key: 'recordedAt', label: '记录时间', type: 'datetime', defaultValue: '' },
-    { key: 'content', label: '健康状况', type: 'textarea', defaultValue: '' },
-  ],
-  statusField: 'enabled',
-  searchFields: [
-    { key: 'unitTypes', label: '档案类型', type: 'dict-select', dictCode: 'jiuankangdangan_types' },
-    { key: 'patientName', label: '用户姓名' },
-  ],
-  labelMap: {
-    title: '档案标题',
-    recordedAt: '记录时间',
-    patientId: '患者ID',
-    patientName: '用户姓名',
-    patientEmail: '邮箱',
-    patientPhotoUrl: '头像',
-    patientPhone: '联系方式',
-    patientIdNumber: '用户身份证号',
-    otherMembers: '其他成员',
-    unitTypes: '档案类型',
-    content: '健康状况',
-    createdAt: '创建时间',
-  },
-  createPayload: (form) => ({ patientId: Number(form.patientId), title: form.title, otherMembers: form.otherMembers || undefined, unitTypes: form.unitTypes ? Number(form.unitTypes) : undefined, recordedAt: form.recordedAt ? new Date(form.recordedAt).toISOString() : undefined, content: form.content || undefined }),
-  // updatePayload 必须带 patientId：后端 DTO @NotNull 校验，且以它为准回填患者冗余信息。
-  updatePayload: (form) => ({ patientId: Number(form.patientId), title: form.title, otherMembers: form.otherMembers || undefined, unitTypes: form.unitTypes ? Number(form.unitTypes) : undefined, recordedAt: form.recordedAt ? new Date(form.recordedAt).toISOString() : undefined, content: form.content || undefined }),
-};
-
 export const departmentsPageConfig: EntityPageConfig = {
   title: '科室管理',
   route: API_ROUTES.departments,

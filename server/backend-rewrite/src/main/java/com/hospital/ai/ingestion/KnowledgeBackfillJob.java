@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  * One-shot historical backfill for the Qdrant {@code patient_knowledge}
  * collection.
  *
- * <p>Walks every medical_record / health_record / visit_record id in ascending
+ * <p>Walks every medical_record / visit_record id in ascending
  * order, batches of 50, with a 200ms inter-batch pause to avoid hammering
  * Doubao's rate limit. Re-runs are safe — Qdrant point ids are derived
  * deterministically from {@code (source_type, source_id, field_key)} so
@@ -42,8 +42,6 @@ public class KnowledgeBackfillJob {
         BackfillReport report = new BackfillReport();
         runOne(KnowledgeChunk.SOURCE_MEDICAL_RECORD, ingestionService::listMedicalRecordIds,
                 ingestionService::ingestMedicalRecord, dryRun, report);
-        runOne(KnowledgeChunk.SOURCE_HEALTH_RECORD, ingestionService::listHealthRecordIds,
-                ingestionService::ingestHealthRecord, dryRun, report);
         runOne(KnowledgeChunk.SOURCE_VISIT, ingestionService::listVisitRecordIds,
                 ingestionService::ingestVisitRecord, dryRun, report);
         log.info("Knowledge backfill complete: {}", report);

@@ -9,8 +9,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hospital.ai.embedding.EmbeddingService;
 import com.hospital.ai.qdrant.PatientKnowledgeStore;
-import com.hospital.healthrecord.domain.HealthRecord;
-import com.hospital.healthrecord.repository.HealthRecordRepository;
 import com.hospital.medicalrecord.domain.MedicalRecord;
 import com.hospital.medicalrecord.repository.MedicalRecordRepository;
 import com.hospital.visit.domain.VisitRecord;
@@ -50,10 +48,8 @@ public class KnowledgeIngestionService {
     private static final int MAX_RETRIES = 5;
 
     private final MedicalRecordRepository medicalRecordRepository;
-    private final HealthRecordRepository healthRecordRepository;
     private final VisitRepository visitRepository;
     private final MedicalRecordChunker medicalRecordChunker;
-    private final HealthRecordChunker healthRecordChunker;
     private final VisitRecordChunker visitRecordChunker;
     private final EmbeddingService embeddingService;
     private final PatientKnowledgeStore knowledgeStore;
@@ -61,20 +57,16 @@ public class KnowledgeIngestionService {
     private final ObjectMapper objectMapper;
 
     public KnowledgeIngestionService(MedicalRecordRepository medicalRecordRepository,
-                                     HealthRecordRepository healthRecordRepository,
                                      VisitRepository visitRepository,
                                      MedicalRecordChunker medicalRecordChunker,
-                                     HealthRecordChunker healthRecordChunker,
                                      VisitRecordChunker visitRecordChunker,
                                      EmbeddingService embeddingService,
                                      PatientKnowledgeStore knowledgeStore,
                                      JdbcClient jdbcClient,
                                      ObjectMapper objectMapper) {
         this.medicalRecordRepository = medicalRecordRepository;
-        this.healthRecordRepository = healthRecordRepository;
         this.visitRepository = visitRepository;
         this.medicalRecordChunker = medicalRecordChunker;
-        this.healthRecordChunker = healthRecordChunker;
         this.visitRecordChunker = visitRecordChunker;
         this.embeddingService = embeddingService;
         this.knowledgeStore = knowledgeStore;
@@ -88,14 +80,6 @@ public class KnowledgeIngestionService {
         if (r == null) return IngestionOutcome.notFound();
         return ingestChunks(KnowledgeChunk.SOURCE_MEDICAL_RECORD, id, r.getPatientId(),
                 medicalRecordChunker.chunk(r));
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public IngestionOutcome ingestHealthRecord(Long id) {
-        HealthRecord r = healthRecordRepository.findById(id).orElse(null);
-        if (r == null) return IngestionOutcome.notFound();
-        return ingestChunks(KnowledgeChunk.SOURCE_HEALTH_RECORD, id, r.getPatientId(),
-                healthRecordChunker.chunk(r));
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -249,14 +233,6 @@ public class KnowledgeIngestionService {
                 .query(Long.class).list();
     }
 
-    public List<Long> listHealthRecordIds(long afterId, int limit) {
-        return jdbcClient.sql("""
-                SELECT id FROM health_record WHERE id > :after ORDER BY id ASC LIMIT :lim
-                """)
-                .param("after", afterId).param("lim", limit)
-                .query(Long.class).list();
-    }
-
     public List<Long> listVisitRecordIds(long afterId, int limit) {
         return jdbcClient.sql("""
                 SELECT id FROM visit_record WHERE id > :after ORDER BY id ASC LIMIT :lim
@@ -269,7 +245,6 @@ public class KnowledgeIngestionService {
     public Map<String, Long> sourceTableCounts() {
         Map<String, Long> counts = new LinkedHashMap<>();
         counts.put("medical_record", count("medical_record"));
-        counts.put("health_record", count("health_record"));
         counts.put("visit_record", count("visit_record"));
         return counts;
     }

@@ -18,7 +18,7 @@
 - `medication`: `MedicationStatusChangeRequest(targetStatus: MedicationStatus)`
 - `config`: `SystemConfigStatusChangeRequest(targetStatus: ConfigStatus)`
 - `medicalRecord`: `BingliStatusChangeRequest(targetStatus: BingliStatus)`
-- `healthRecord`: `JiuankangdanganStatusChangeRequest(targetStatus: JiuankangdanganStatus)`
+- `familyDoctorContract`: `ContractStatusChangeRequest(targetStatus: ContractStatus)`
 
 ## 前端统一映射规则（`enabled -> targetStatus`）
 
@@ -30,7 +30,7 @@
 - `/api/v1/medications`: `true -> ENABLED`, `false -> DISABLED`
 - `/api/v1/configs`: `true -> ENABLED`, `false -> DISABLED`
 - `/api/v1/medical-records`: `true -> ACTIVE`, `false -> ARCHIVED`
-- `/api/v1/health-records`: `true -> ACTIVE`, `false -> ARCHIVED`
+- `/api/v1/family-doctor-contracts`: `true -> ACTIVE`, `false -> TERMINATED`
 
 ## 类型约束
 

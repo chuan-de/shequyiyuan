@@ -13,7 +13,7 @@
 - 数据库：PostgreSQL 16（业务数据） + Qdrant（向量数据） + pgvector（仅扩展保留）
 - AI 服务：火山引擎方舟 Doubao（OpenAI 兼容协议）
 
-系统服务于患者、医生、家庭医生、前台、管理员五类角色，覆盖问诊、就诊、病历、健康档案、药品、字典、AI 辅助等全流程业务。
+系统服务于患者、医生、家庭医生、前台、管理员五类角色，覆盖问诊、就诊、病历、患者档案与慢病随访、家医签约、药品、字典、AI 辅助等全流程业务。
 
 ---
 
@@ -101,7 +101,8 @@ com.hospital.<module>/
 | 药品 | `medication` / `yaopin` | `medication`、`medication_inventory_log` |
 | 就诊 | `visit` / `jiuzhen` | `visit_record` |
 | 病历 | `medicalrecord` / `bingli` | `medical_record` |
-| 健康档案 | `healthrecord` / `jiuankangdangan` | `health_record` |
+| 慢病随访 | `followup`（重构新增，承接 legacy 健康档案） | `patient_followup` |
+| 家医签约 | `familydoctor.contract`（重构新增） | `family_doctor_contract` |
 | 字典 | `dictionary` | `dictionary_item`、`dictionary_operation_log` |
 | 系统配置 | `systemconfig` | `system_config` |
 | 文件 / 照片 | `file` / `photo` | `file_metadata`、`photo` |
@@ -180,7 +181,7 @@ web/
 
 ### 4.3 关键抽象：EntityManagementPage
 
-`components/business/entity-management-page.tsx` 是一套配置驱动的 CRUD 通用页，多数业务模块（药品、医生、家庭医生、患者、前台、科室、就诊、病历、健康档案）都是它的薄包装层，只需提供一个 `EntityPageConfig` 即可获得：
+`components/business/entity-management-page.tsx` 是一套配置驱动的 CRUD 通用页，多数业务模块（药品、医生、家庭医生、家医签约、慢病随访、患者、前台、科室、就诊、病历）都是它的薄包装层，只需提供一个 `EntityPageConfig` 即可获得：
 
 - 列表 + 服务端分页 + 顶部搜索（`searchFields`）
 - 新建 / 编辑 / 删除 / 启用-停用 / 重置密码（`rowActions`）
@@ -251,10 +252,13 @@ web/
 - **AI Vision OCR 识别**：上传病历照片 → 自动抽取主诉 / 体征 / 诊断 / 处方建议（详见 §6.1）。
 - 病历保存时若 patient 已授权 RAG，则触发异步嵌入入库（详见 §6.2）。
 
-### 5.8 健康档案
+### 5.8 患者档案与慢病随访
 
-- 字段：患者、档案标题、其他成员、档案单位（词典）、记录时间、健康状况描述。
-- 与病历类似的反规范化展示。
+> Legacy 的「健康档案」（自由文本）在重构中被结构化拆解：身份与病史信息进入患者档案（过敏史、既往病史、紧急联系人等），周期性健康数据进入慢病随访模块。
+
+- **患者档案扩展**：出生日期、住址、过敏史、既往病史、紧急联系人；患者 360° 视图（`/patients/[id]`）聚合展示并以警示条突出过敏史。
+- **慢病随访** (`patient_followup`)：结构化记录血压/血糖/身高体重/心率，BMI 服务端计算；360° 视图内置趋势折线与超标预警（血压 ≥140/90、血糖 ≥7、BMI ≥28）。
+- **家庭医生签约** (`family_doctor_contract`)：患者 ↔ 家庭医生服务契约（服务包/签约日期/到期），数据库部分唯一索引保证一名患者仅一份生效签约。
 
 ### 5.9 字典 / 系统配置
 
@@ -284,7 +288,7 @@ web/
 - 嵌入模型：`doubao-embedding-vision-250615`（2048 维，agentPlan 白名单）。
 - 向量库：**Qdrant**（gRPC 6334），collection `patient_knowledge`，启动自动建库；启用 Cosine 距离。
 - **强制隐私围栏**：`PatientKnowledgeStore.search()` 内部强制 `match(patient_id, ?)` MUST 过滤；不提供任何旁路重载，保证 A 患者绝不可能命中 B 患者的向量。
-- 入库源：病历 / 健康档案 / 就诊记录三类业务字段；改动后异步生成 embedding，失败入 `ai_dead_letter`。
+- 入库源：病历 / 就诊记录两类业务字段；改动后异步生成 embedding，失败入 `ai_dead_letter`。
 - 回管：`POST /api/v1/ai/admin/backfill` 一键回填历史数据。
 - 引用渲染：LLM 回答里以 `[#N]` 内联标注引用；前端 `patient-ai-ask-panel.tsx` 用 `text.split(/(\[#\d+\])/g)` 解析为可点击按钮，点击侧滑显示原文片段 + 跳回原始记录的深链接。
 
@@ -366,7 +370,7 @@ web/
 5. **药品管理**：自动编号 + 价格 / 库存维护 + 库存增减流水（行锁防并发）。
 6. **就诊管理**：自动就诊号，跨表展示患者与科室信息。
 7. **病历管理**：自动病历号 + JSONB 处方与附件 + AI OCR 一键识别。
-8. **健康档案管理**：与病历同构的字段对齐和反规范化展示。
+8. **患者档案与慢病管理**：患者 360° 视图、结构化随访指标（BMI 自动计算 + 超标预警 + 趋势图）、家庭医生签约（一患者一份生效契约的数据库级约束）。
 9. **数据字典 / 系统配置**：可视化维护 + 操作审计。
 10. **文件 / 照片管理**：通用文件表 + 二进制照片表，按业务 ID 关联。
 11. **AI 病历识别**：火山 Doubao 视觉模型自动抽取结构化字段，结果可回填表单。

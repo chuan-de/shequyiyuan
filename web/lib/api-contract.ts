@@ -11,7 +11,6 @@ export const API_ROUTES = {
   followups: '/api/v1/followups',
   visits: '/api/v1/visits',
   medicalRecords: '/api/v1/medical-records',
-  healthRecords: '/api/v1/health-records',
   doctors: '/api/v1/doctors',
   configs: '/api/v1/configs',
   patients: '/api/v1/patients',
@@ -40,7 +39,6 @@ export type StatusManagedRoute =
   | typeof API_ROUTES.medications
   | typeof API_ROUTES.configs
   | typeof API_ROUTES.medicalRecords
-  | typeof API_ROUTES.healthRecords
   | typeof API_ROUTES.familyDoctorContracts;
 
 export type DoctorStatus = 'ACTIVE' | 'INACTIVE';
@@ -49,7 +47,6 @@ export type VisitStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
 export type MedicationStatus = 'ENABLED' | 'DISABLED';
 export type ConfigStatus = 'ENABLED' | 'DISABLED';
 export type MedicalRecordStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
-export type HealthRecordStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
 export type ContractStatus = 'ACTIVE' | 'TERMINATED' | 'EXPIRED';
 
 export type EntityStatusByRoute = {
@@ -59,7 +56,6 @@ export type EntityStatusByRoute = {
   [API_ROUTES.medications]: MedicationStatus;
   [API_ROUTES.configs]: ConfigStatus;
   [API_ROUTES.medicalRecords]: MedicalRecordStatus;
-  [API_ROUTES.healthRecords]: HealthRecordStatus;
   [API_ROUTES.familyDoctorContracts]: ContractStatus;
 };
 
@@ -115,7 +111,7 @@ export type AiVisionRequest =
  */
 export type AiPatientCitation = {
   chunkId: number;
-  sourceType: 'medical_record' | 'health_record' | 'visit';
+  sourceType: 'medical_record' | 'visit';
   sourceId: number;
   fieldKey: string;
   snippet: string;

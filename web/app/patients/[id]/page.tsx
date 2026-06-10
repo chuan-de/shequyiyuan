@@ -25,7 +25,6 @@ export default function PatientDetailPage() {
   const [contracts, setContracts] = useState<EntityRecord[]>([]);
   const [followups, setFollowups] = useState<EntityRecord[]>([]);
   const [visits, setVisits] = useState<EntityRecord[]>([]);
-  const [healthRecords, setHealthRecords] = useState<EntityRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +49,7 @@ export default function PatientDetailPage() {
       // 各分区按权限拉取，单个失败不拖垮整页。
       const safe = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
       const empty = { records: [] as EntityRecord[], total: 0, page: 1, size: 0 };
-      const [row, contractRes, followupRes, visitRes, healthRes] = await Promise.all([
+      const [row, contractRes, followupRes, visitRes] = await Promise.all([
         getEntity(t, API_ROUTES.patients, pid),
         hasPermission(me, 'family-doctor-contracts:read')
           ? safe(listEntities(t, API_ROUTES.familyDoctorContracts, { patientId: pid, page: 1, size: 50 }), empty)
@@ -61,16 +60,12 @@ export default function PatientDetailPage() {
         hasPermission(me, 'visits:read')
           ? safe(listEntities(t, API_ROUTES.visits, { page: 1, size: 500 }), empty)
           : Promise.resolve(empty),
-        hasPermission(me, 'health-records:read')
-          ? safe(listEntities(t, API_ROUTES.healthRecords, { page: 1, size: 500 }), empty)
-          : Promise.resolve(empty),
       ]);
       setPatient(row);
       setContracts(contractRes.records);
       setFollowups(followupRes.records);
-      // 就诊/健康档案接口暂无 patientId 过滤参数，前端按患者过滤。
+      // 就诊接口暂无 patientId 过滤参数，前端按患者过滤。
       setVisits(visitRes.records.filter(v => Number(v.patientId) === pid));
-      setHealthRecords(healthRes.records.filter(h => Number(h.patientId) === pid));
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载患者信息失败');
     } finally {
@@ -106,21 +101,14 @@ export default function PatientDetailPage() {
   const latestFollowup = followups[0] ?? null;
 
   const timeline = useMemo(() => {
-    const items: { time: string; kind: '就诊' | '健康档案'; title: string; href: string }[] = [];
-    visits.forEach(v => items.push({
+    const items = visits.map(v => ({
       time: String(v.visitDate ?? v.createdAt ?? ''),
-      kind: '就诊',
+      kind: '就诊' as const,
       title: `就诊号 ${v.visitNumber ?? '—'}${v.fee != null ? ` · 费用 ¥${Number(v.fee).toFixed(2)}` : ''}${v.registrationNotes ? ` · ${v.registrationNotes}` : ''}`,
       href: '/visits',
     }));
-    healthRecords.forEach(h => items.push({
-      time: String(h.recordedAt ?? h.createdAt ?? ''),
-      kind: '健康档案',
-      title: String(h.title ?? '—'),
-      href: '/health-records',
-    }));
     return items.filter(i => i.time).sort((a, b) => b.time.localeCompare(a.time)).slice(0, 10);
-  }, [visits, healthRecords]);
+  }, [visits]);
 
   return (
     <AppShell title={fullName ? `患者：${fullName}` : '患者详情'} description="患者 360° 视图 — 档案、签约、健康趋势与 AI 问询">
@@ -231,17 +219,17 @@ export default function PatientDetailPage() {
               </section>
             )}
 
-            {/* 就诊 / 健康档案时间线 */}
-            {(hasPermission(user, 'visits:read') || hasPermission(user, 'health-records:read')) && (
+            {/* 就诊时间线 */}
+            {hasPermission(user, 'visits:read') && (
               <section className="rounded-xl border border-slate-200 bg-white p-5">
-                <h2 className="mb-3 text-sm font-semibold text-slate-900">📋 就诊与档案时间线</h2>
+                <h2 className="mb-3 text-sm font-semibold text-slate-900">📋 就诊时间线</h2>
                 {timeline.length === 0 ? (
                   <p className="text-sm text-slate-400">暂无记录</p>
                 ) : (
                   <ol className="space-y-3">
                     {timeline.map((item, i) => (
                       <li key={i} className="flex items-start gap-3 text-sm">
-                        <span className={`mt-0.5 rounded-full px-2 py-0.5 text-xs font-medium ${item.kind === '就诊' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                        <span className="mt-0.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
                           {item.kind}
                         </span>
                         <div className="min-w-0 flex-1">

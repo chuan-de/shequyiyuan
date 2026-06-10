@@ -63,7 +63,7 @@ domain/       Domain objects and status enums
 dto/          Request/response DTOs
 ```
 
-**Auth infrastructure** (`com.hospital.auth`) is fully JPA-backed. All other business modules currently use `InMemoryXxxRepository` stubs. The next rewrite step for any module is: write a Flyway migration to create the table → implement a JPA repository → replace the in-memory stub.
+**All business modules are fully JPA-backed** (PostgreSQL via Flyway-managed schema). Accounts follow the `app_user` + profile-table pattern (Doctor / FamilyDoctor / Patient / Reception share `UserAccountService`).
 
 Cross-cutting:
 - `com.hospital.config.SecurityConfig` — Spring Security + JWT filter chain
@@ -84,7 +84,7 @@ Scripts live in `server/backend-rewrite/src/main/resources/db/migration/` as `V{
   - **L1** — base entity structure (`app_user`, `app_role`)
   - **L2** — RBAC structure (`app_permission`, `app_role_permission`)
   - **L3** — data patches / naming alignment (must run after L2)
-- Current versions: V1–V45. V4 and V44 are no-op markers; V13 holds the real config-permission alignment, V45 drops the obsolete `patient_knowledge_chunk` table after the storage move to Qdrant. V37–V45 are AI module migrations (see `docs/ai-features-plan.md`).
+- Current versions: V1–V50. V4 and V44 are no-op markers; V13 holds the real config-permission alignment, V45 drops the obsolete `patient_knowledge_chunk` table after the storage move to Qdrant. V37–V45 are AI module migrations (see `docs/ai-features-plan.md`). V47–V49 add patient medical fields, family-doctor contracts, and chronic-disease followups. V50 drops the health_record module (superseded by V47+V49).
 
 ### AI Module (`com.hospital.ai.*`)
 
@@ -124,15 +124,19 @@ Tracked in `docs/migration-status.md` (single source of truth — do not duplica
 | Auth | yonghu | **Done** | JPA |
 | Health check | — | **Done** | — |
 | Dictionary (字典) | dictionary | **Done** | JPA |
-| Medications (药品) | yaopin | Partial | In-memory stub |
-| Family Doctors (家庭医生) | jiatingyisheng | Partial | In-memory stub |
-| Doctors (医生) | yisheng | Partial | In-memory stub |
-| Visits (就诊) | jiuzhen | Partial | In-memory stub |
-| System Config (配置) | peizhi | Partial | In-memory stub |
-| Medical Records (病例) | bingli | Partial | In-memory stub |
-| Health Records (健康档案) | jiuankangdangan | Partial | In-memory stub |
-| Qiantai (前台) | qiantai | **Not started** | — |
-| Patients (用户) | yonghu | **Not started** | — |
+| Medications (药品) | yaopin | **Done** | JPA |
+| Family Doctors (家庭医生) | jiatingyisheng | **Done** | JPA |
+| FD Contracts (家医签约) | —（新增） | **Done** | JPA (V48) |
+| Followups (慢病随访) | —（新增） | **Done** | JPA (V49) |
+| Doctors (医生) | yisheng | **Done** | JPA |
+| Departments (科室) | keshi | **Done** | JPA |
+| Visits (就诊) | jiuzhen | **Done** | JPA |
+| System Config (配置) | peizhi | **Done** | JPA |
+| Medical Records (病例) | bingli | **Done** | JPA |
+| Health Records (健康档案) | jiuankangdangan | **Removed (V50)** | 由患者档案扩展(V47)+慢病随访(V49)承接 |
+| Receptions (前台) | qiantai | **Done** | JPA |
+| Patients (患者) | yonghu | **Done** | JPA |
+| AI (vision / patient-RAG / consult) | — | **Done** | JPA + Qdrant |
 
 When adding a new module: check if the corresponding legacy controller in `server/legacy/src/main/java/com/jlwl/` exists for behavior reference. Legacy uses MyBatis + MySQL; the rewrite uses JPA + PostgreSQL.
 

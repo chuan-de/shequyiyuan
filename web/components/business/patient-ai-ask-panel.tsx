@@ -29,7 +29,6 @@ type ChatTurn =
 function formatSourceLabel(c: AiPatientCitation): string {
   const map: Record<AiPatientCitation['sourceType'], string> = {
     medical_record: '病例',
-    health_record: '健康档案',
     visit: '就诊记录',
   };
   return `${map[c.sourceType]} #${c.sourceId}（${c.fieldKey}）`;
@@ -71,7 +70,6 @@ function renderAssistantText(
 function deepLinkFor(c: AiPatientCitation): string | null {
   switch (c.sourceType) {
     case 'medical_record': return `/medical-records?focus=${c.sourceId}`;
-    case 'health_record':  return `/health-records?focus=${c.sourceId}`;
     case 'visit':          return `/visits?focus=${c.sourceId}`;
     default:               return null;
   }

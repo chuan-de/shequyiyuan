@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * Strategy for slicing a single domain entity into per-field
  * {@link KnowledgeChunk}s. One implementation per source type
- * (medical_record, health_record, visit).
+ * (medical_record, visit).
  *
  * <p>Implementations MUST:</p>
  * <ul>

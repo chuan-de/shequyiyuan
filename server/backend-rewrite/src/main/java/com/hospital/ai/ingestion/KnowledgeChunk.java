@@ -20,8 +20,6 @@ public record KnowledgeChunk(
 
     /** Source type for medical_record-derived chunks. */
     public static final String SOURCE_MEDICAL_RECORD = "medical_record";
-    /** Source type for health_record-derived chunks. */
-    public static final String SOURCE_HEALTH_RECORD = "health_record";
     /** Source type for visit_record-derived chunks. */
     public static final String SOURCE_VISIT = "visit";
 }

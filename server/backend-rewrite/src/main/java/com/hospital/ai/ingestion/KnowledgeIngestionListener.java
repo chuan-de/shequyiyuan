@@ -13,7 +13,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *
  * <p>Listens AFTER_COMMIT so a failing embedding call (network outage,
  * Doubao 5xx, dimension mismatch) cannot roll back the original
- * medical-record / health-record / visit write. {@code @Async} pushes the
+ * medical-record / visit write. {@code @Async} pushes the
  * work off the request thread so the user's CRUD response stays snappy.</p>
  *
  * <p>The whole component is opt-in via
@@ -44,8 +44,6 @@ public class KnowledgeIngestionListener {
             switch (event.sourceType()) {
                 case KnowledgeChunk.SOURCE_MEDICAL_RECORD ->
                         ingestionService.ingestMedicalRecord(event.sourceId());
-                case KnowledgeChunk.SOURCE_HEALTH_RECORD ->
-                        ingestionService.ingestHealthRecord(event.sourceId());
                 case KnowledgeChunk.SOURCE_VISIT ->
                         ingestionService.ingestVisitRecord(event.sourceId());
                 default ->
