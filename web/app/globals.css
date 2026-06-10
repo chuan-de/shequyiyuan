@@ -20,7 +20,7 @@
 
   /* ── 卡片（认证页用，无 max-w 限制） ── */
   .card {
-    @apply w-full rounded-2xl bg-white p-6 shadow-soft md:p-8;
+    @apply w-full rounded-2xl bg-white p-6 shadow-soft ring-1 ring-slate-200/60 md:p-8;
   }
 
   /* ── 表单元素 ── */
@@ -42,7 +42,7 @@
 
   /* ── 按钮 ── */
   .btn {
-    @apply inline-flex items-center justify-center rounded-xl border border-brand bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center rounded-xl border border-brand bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-md shadow-brand/20 transition hover:bg-brand-dark hover:shadow-brand/30 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none;
   }
 
   .btn-secondary {
@@ -74,7 +74,7 @@
 
   /* ── 数据表格 ── */
   .table-wrap {
-    @apply overflow-hidden rounded-2xl bg-white shadow-soft;
+    @apply overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-slate-200/60;
   }
 
   .th {
@@ -102,12 +102,12 @@
     @apply bg-slate-100 text-slate-500;
   }
 
-  /* ── 侧边栏导航链接 ── */
+  /* ── 侧边栏导航链接（蓝色渐变背景上使用） ── */
   .nav-link {
-    @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-slate-800 hover:text-white;
+    @apply flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-blue-100/85 transition hover:bg-white/10 hover:text-white;
   }
 
   .nav-link-active {
-    @apply bg-brand text-white hover:bg-brand-dark;
+    @apply bg-white font-semibold text-blue-700 shadow-md hover:bg-white hover:text-blue-700;
   }
 }
