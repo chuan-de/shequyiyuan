@@ -31,7 +31,7 @@ export type EntityFormField = {
   required?: boolean;
   placeholder?: string;
   defaultValue?: string;
-  type?: 'text' | 'password' | 'textarea' | 'number' | 'select' | 'dict-select' | 'photo' | 'datetime' | 'custom';
+  type?: 'text' | 'password' | 'textarea' | 'number' | 'select' | 'dict-select' | 'photo' | 'datetime' | 'date' | 'custom';
   options?: { value: string; label: string }[];
   /** type 为 'dict-select' 时必填：选项实时来自数据字典（仅启用项）。 */
   dictCode?: string;
@@ -101,6 +101,9 @@ function initForm(fields: EntityFormField[], row?: EntityRecord | null): Record<
       if (typeof v === 'string' && v) acc[f.key] = isoToLocalInput(v);
       else if (!row) acc[f.key] = nowLocalInput();
       else acc[f.key] = '';
+    } else if (f.type === 'date') {
+      // 后端 LocalDate 序列化为 yyyy-MM-dd，直接截取适配 <input type="date">。
+      acc[f.key] = typeof v === 'string' && v ? v.slice(0, 10) : (f.defaultValue ?? '');
     } else if (f.type === 'custom') {
       if (v !== undefined && v !== null && typeof v !== 'string') {
         acc[f.key] = JSON.stringify(v);
@@ -713,9 +716,9 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
                     value={createForm[f.key] ?? ''}
                     onChange={url => setCreateForm(prev => ({ ...prev, [f.key]: url }))}
                   />
-                ) : f.type === 'datetime' ? (
+                ) : f.type === 'datetime' || f.type === 'date' ? (
                   <Input
-                    type="datetime-local"
+                    type={f.type === 'date' ? 'date' : 'datetime-local'}
                     value={createForm[f.key] ?? ''}
                     onChange={e => setCreateForm(prev => ({ ...prev, [f.key]: e.target.value }))}
                   />
@@ -787,9 +790,9 @@ export function EntityManagementPage({ config }: { config: EntityPageConfig }) {
                       value={editForm[f.key] ?? ''}
                       onChange={url => setEditForm(prev => ({ ...prev, [f.key]: url }))}
                     />
-                  ) : f.type === 'datetime' ? (
+                  ) : f.type === 'datetime' || f.type === 'date' ? (
                     <Input
-                      type="datetime-local"
+                      type={f.type === 'date' ? 'date' : 'datetime-local'}
                       value={editForm[f.key] ?? ''}
                       onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))}
                     />

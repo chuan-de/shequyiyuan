@@ -7,6 +7,8 @@ export const API_ROUTES = {
   dictionaryItems: (dictionaryCode: string) => `/api/v1/dictionaries/${dictionaryCode}/items`,
   medications: '/api/v1/medications',
   familyDoctors: '/api/v1/family-doctors',
+  familyDoctorContracts: '/api/v1/family-doctor-contracts',
+  followups: '/api/v1/followups',
   visits: '/api/v1/visits',
   medicalRecords: '/api/v1/medical-records',
   healthRecords: '/api/v1/health-records',
@@ -38,7 +40,8 @@ export type StatusManagedRoute =
   | typeof API_ROUTES.medications
   | typeof API_ROUTES.configs
   | typeof API_ROUTES.medicalRecords
-  | typeof API_ROUTES.healthRecords;
+  | typeof API_ROUTES.healthRecords
+  | typeof API_ROUTES.familyDoctorContracts;
 
 export type DoctorStatus = 'ACTIVE' | 'INACTIVE';
 export type FamilyDoctorStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'TERMINATED';
@@ -47,6 +50,7 @@ export type MedicationStatus = 'ENABLED' | 'DISABLED';
 export type ConfigStatus = 'ENABLED' | 'DISABLED';
 export type MedicalRecordStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
 export type HealthRecordStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+export type ContractStatus = 'ACTIVE' | 'TERMINATED' | 'EXPIRED';
 
 export type EntityStatusByRoute = {
   [API_ROUTES.doctors]: DoctorStatus;
@@ -56,6 +60,7 @@ export type EntityStatusByRoute = {
   [API_ROUTES.configs]: ConfigStatus;
   [API_ROUTES.medicalRecords]: MedicalRecordStatus;
   [API_ROUTES.healthRecords]: HealthRecordStatus;
+  [API_ROUTES.familyDoctorContracts]: ContractStatus;
 };
 
 export type StatusChangeRequest<R extends StatusManagedRoute = StatusManagedRoute> = {

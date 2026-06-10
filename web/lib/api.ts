@@ -62,7 +62,8 @@ const statusChangeByRoute: Partial<{ [R in StatusManagedRoute]: (enabled: boolea
   [API_ROUTES.medications]: (enabled) => ({ targetStatus: enabled ? 'ENABLED' : 'DISABLED' }),
   [API_ROUTES.configs]: (enabled) => ({ targetStatus: enabled ? 'ENABLED' : 'DISABLED' }),
   [API_ROUTES.medicalRecords]: (enabled) => ({ targetStatus: enabled ? 'ACTIVE' : 'ARCHIVED' }),
-  [API_ROUTES.healthRecords]: (enabled) => ({ targetStatus: enabled ? 'ACTIVE' : 'ARCHIVED' })
+  [API_ROUTES.healthRecords]: (enabled) => ({ targetStatus: enabled ? 'ACTIVE' : 'ARCHIVED' }),
+  [API_ROUTES.familyDoctorContracts]: (enabled) => ({ targetStatus: enabled ? 'ACTIVE' : 'TERMINATED' })
 };
 
 export async function login(payload: LoginPayload): Promise<AuthResponse> { const r = await apiFetch(API_ROUTES.authLogin,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); if (!r.ok) throw await parseError(r); return r.json() as Promise<AuthResponse>; }

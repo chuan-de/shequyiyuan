@@ -11,6 +11,8 @@ const NAV_ITEMS = [
   { href: '/doctors', label: '医生管理', icon: '👨‍⚕️', permission: 'doctors:read' },
   { href: '/visits', label: '就诊记录', icon: '📋', permission: 'visits:read' },
   { href: '/family-doctors', label: '家庭医生', icon: '🏠', permission: 'family-doctors:read' },
+  { href: '/family-doctor-contracts', label: '家医签约', icon: '🤝', permission: 'family-doctor-contracts:read' },
+  { href: '/followups', label: '慢病随访', icon: '🩺', permission: 'followups:read' },
   { href: '/medical-records', label: '病历管理', icon: '🗂️', permission: 'medical-records:read' },
   { href: '/health-records', label: '健康档案', icon: '❤️', permission: 'health-records:read' },
   { href: '/configs', label: '系统配置', icon: '⚙️', permission: 'configs:read' },

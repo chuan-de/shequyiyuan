@@ -20,8 +20,10 @@ public class DefaultPatientService implements PatientService {
 
     private static final String SELECT_SQL = """
             SELECT pp.id, pp.user_id, au.username, au.enabled,
-                   pp.full_name, pp.phone, pp.id_number, pp.email,
-                   pp.sex_types, pp.created_at
+                   pp.full_name, pp.photo_url, pp.phone, pp.id_number, pp.email,
+                   pp.sex_types, pp.birth_date, pp.address, pp.allergies,
+                   pp.medical_history, pp.emergency_contact_name,
+                   pp.emergency_contact_phone, pp.created_at
             FROM patient_profile pp
             JOIN app_user au ON au.id = pp.user_id
             """;
@@ -79,12 +81,12 @@ public class DefaultPatientService implements PatientService {
         PatientProfile profile = new PatientProfile(
                 userId, request.fullName(), request.sexTypes(),
                 request.phone(), request.idNumber(), request.email());
+        applyMedicalFields(profile, request.photoUrl(), request.birthDate(), request.address(),
+                request.allergies(), request.medicalHistory(),
+                request.emergencyContactName(), request.emergencyContactPhone());
         profile = profileRepo.save(profile);
 
-        return new PatientResponse(
-                profile.getId(), userId, request.username(), true,
-                profile.getFullName(), profile.getPhone(), profile.getIdNumber(),
-                profile.getEmail(), profile.getSexTypes(), profile.getCreatedAt());
+        return detail(profile.getId());
     }
 
     @Override
@@ -106,9 +108,26 @@ public class DefaultPatientService implements PatientService {
         profile.setPhone(request.phone());
         profile.setIdNumber(request.idNumber());
         profile.setEmail(request.email());
-        profileRepo.save(profile);
+        applyMedicalFields(profile, request.photoUrl(), request.birthDate(), request.address(),
+                request.allergies(), request.medicalHistory(),
+                request.emergencyContactName(), request.emergencyContactPhone());
+        // detail() 走 JdbcClient 直读数据库，必须先 flush JPA 脏数据。
+        profileRepo.saveAndFlush(profile);
 
         return detail(id);
+    }
+
+    private static void applyMedicalFields(PatientProfile profile, String photoUrl,
+                                           java.time.LocalDate birthDate, String address,
+                                           String allergies, String medicalHistory,
+                                           String emergencyContactName, String emergencyContactPhone) {
+        profile.setPhotoUrl(photoUrl);
+        profile.setBirthDate(birthDate);
+        profile.setAddress(address);
+        profile.setAllergies(allergies);
+        profile.setMedicalHistory(medicalHistory);
+        profile.setEmergencyContactName(emergencyContactName);
+        profile.setEmergencyContactPhone(emergencyContactPhone);
     }
 
     @Override
@@ -135,16 +154,24 @@ public class DefaultPatientService implements PatientService {
 
     private PatientResponse mapRow(ResultSet rs, int rowNum) throws SQLException {
         Integer sexTypes = rs.getObject("sex_types") != null ? rs.getInt("sex_types") : null;
+        java.sql.Date birthDate = rs.getDate("birth_date");
         return new PatientResponse(
                 rs.getLong("id"),
                 rs.getLong("user_id"),
                 rs.getString("username"),
                 rs.getBoolean("enabled"),
                 rs.getString("full_name"),
+                rs.getString("photo_url"),
                 rs.getString("phone"),
                 rs.getString("id_number"),
                 rs.getString("email"),
                 sexTypes,
+                birthDate != null ? birthDate.toLocalDate() : null,
+                rs.getString("address"),
+                rs.getString("allergies"),
+                rs.getString("medical_history"),
+                rs.getString("emergency_contact_name"),
+                rs.getString("emergency_contact_phone"),
                 rs.getTimestamp("created_at").toInstant());
     }
 }

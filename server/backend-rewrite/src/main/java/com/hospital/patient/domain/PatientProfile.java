@@ -3,6 +3,7 @@ package com.hospital.patient.domain;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "patient_profile")
@@ -33,6 +34,24 @@ public class PatientProfile {
     @Column
     private String email;
 
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+
+    @Column
+    private String address;
+
+    @Column(columnDefinition = "TEXT")
+    private String allergies;
+
+    @Column(name = "medical_history", columnDefinition = "TEXT")
+    private String medicalHistory;
+
+    @Column(name = "emergency_contact_name")
+    private String emergencyContactName;
+
+    @Column(name = "emergency_contact_phone")
+    private String emergencyContactPhone;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -56,11 +75,24 @@ public class PatientProfile {
     public String getPhone() { return phone; }
     public String getIdNumber() { return idNumber; }
     public String getEmail() { return email; }
+    public LocalDate getBirthDate() { return birthDate; }
+    public String getAddress() { return address; }
+    public String getAllergies() { return allergies; }
+    public String getMedicalHistory() { return medicalHistory; }
+    public String getEmergencyContactName() { return emergencyContactName; }
+    public String getEmergencyContactPhone() { return emergencyContactPhone; }
     public Instant getCreatedAt() { return createdAt; }
 
     public void setFullName(String fullName) { this.fullName = fullName; }
+    public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
     public void setSexTypes(Integer sexTypes) { this.sexTypes = sexTypes; }
     public void setPhone(String phone) { this.phone = phone; }
     public void setIdNumber(String idNumber) { this.idNumber = idNumber; }
     public void setEmail(String email) { this.email = email; }
+    public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
+    public void setAddress(String address) { this.address = address; }
+    public void setAllergies(String allergies) { this.allergies = allergies; }
+    public void setMedicalHistory(String medicalHistory) { this.medicalHistory = medicalHistory; }
+    public void setEmergencyContactName(String emergencyContactName) { this.emergencyContactName = emergencyContactName; }
+    public void setEmergencyContactPhone(String emergencyContactPhone) { this.emergencyContactPhone = emergencyContactPhone; }
 }
