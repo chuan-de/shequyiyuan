@@ -1,7 +1,6 @@
 'use client';
-import { EntityManagementPage } from '@/components/business/entity-management-page';
-import { healthRecordsPageConfig } from '@/components/business/forms/entity-form-configs';
+import { HealthRecordManagementPage } from '@/components/business/forms/health-record-form';
 
 export default function Page() {
-  return <EntityManagementPage config={healthRecordsPageConfig} />;
+  return <HealthRecordManagementPage />;
 }

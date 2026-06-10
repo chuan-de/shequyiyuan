@@ -22,9 +22,10 @@ public class HealthRecordController {
     @GetMapping
     @PreAuthorize("hasAnyAuthority('health-records:read', 'jiuankangdangan:read')")
     public ApiResponse<PageResponse<HealthRecord>> list(@RequestParam(required = false) String keyword, @RequestParam(required = false) HealthRecordStatus status,
+                                                                  @RequestParam(required = false) String patientName, @RequestParam(required = false) Integer unitTypes,
                                                                   @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size,
                                                                   @RequestParam(required = false) String sortBy, @RequestParam(defaultValue = "asc") String sortDir) {
-        return ApiResponse.ok(PageQueryUtils.toPage(service.list(keyword, status), page, size, sortBy, sortDir));
+        return ApiResponse.ok(PageQueryUtils.toPage(service.list(keyword, status, patientName, unitTypes), page, size, sortBy, sortDir));
     }
 
     @GetMapping("/{id}")

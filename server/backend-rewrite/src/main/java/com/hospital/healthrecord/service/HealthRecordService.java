@@ -6,7 +6,7 @@ import com.hospital.healthrecord.dto.HealthRecordUpsertRequest;
 import java.util.List;
 
 public interface HealthRecordService {
-    List<HealthRecord> list(String keyword, HealthRecordStatus status);
+    List<HealthRecord> list(String keyword, HealthRecordStatus status, String patientName, Integer unitTypes);
     HealthRecord detail(Long id);
     HealthRecord create(HealthRecordUpsertRequest request, String actor);
     HealthRecord update(Long id, HealthRecordUpsertRequest request, String actor);

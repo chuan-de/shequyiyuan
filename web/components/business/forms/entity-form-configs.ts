@@ -442,7 +442,7 @@ export const healthRecordsPageConfig: EntityPageConfig = {
   route: API_ROUTES.healthRecords,
   permissionPrefix: 'health-records',
   columns: [
-    { key: 'patientFullName', title: '用户姓名' },
+    { key: 'patientName', title: '用户姓名' },
     { key: 'patientPhotoUrl', title: '头像', type: 'photo' },
     { key: 'patientPhone', title: '联系方式' },
     { key: 'patientIdNumber', title: '用户身份证号' },
@@ -467,7 +467,9 @@ export const healthRecordsPageConfig: EntityPageConfig = {
   labelMap: {
     title: '档案标题',
     recordedAt: '记录时间',
-    patientFullName: '用户姓名',
+    patientId: '患者ID',
+    patientName: '用户姓名',
+    patientEmail: '邮箱',
     patientPhotoUrl: '头像',
     patientPhone: '联系方式',
     patientIdNumber: '用户身份证号',
@@ -477,7 +479,8 @@ export const healthRecordsPageConfig: EntityPageConfig = {
     createdAt: '创建时间',
   },
   createPayload: (form) => ({ patientId: Number(form.patientId), title: form.title, otherMembers: form.otherMembers || undefined, unitTypes: form.unitTypes ? Number(form.unitTypes) : undefined, recordedAt: form.recordedAt ? new Date(form.recordedAt).toISOString() : undefined, content: form.content || undefined }),
-  updatePayload: (form) => ({ title: form.title, otherMembers: form.otherMembers || undefined, unitTypes: form.unitTypes ? Number(form.unitTypes) : undefined, recordedAt: form.recordedAt ? new Date(form.recordedAt).toISOString() : undefined, content: form.content || undefined }),
+  // updatePayload 必须带 patientId：后端 DTO @NotNull 校验，且以它为准回填患者冗余信息。
+  updatePayload: (form) => ({ patientId: Number(form.patientId), title: form.title, otherMembers: form.otherMembers || undefined, unitTypes: form.unitTypes ? Number(form.unitTypes) : undefined, recordedAt: form.recordedAt ? new Date(form.recordedAt).toISOString() : undefined, content: form.content || undefined }),
 };
 
 export const departmentsPageConfig: EntityPageConfig = {
