@@ -70,6 +70,8 @@
 
 ## 迁移顺序调整记录
 
+- **安全硬化 + CI + 部署（2026-06-11）**：登录失败限流 `LoginAttemptService`（用户名+IP 连错 5 次锁 15 分钟，HTTP 429 + Retry-After，登录成功清零；内存实现仅单实例有效，配置 `security.login-throttle.*`）。生产部署链路落地：`application-prod.yml`（机密无默认值 fail-fast）、后端/前端多阶段 Dockerfile、`docker-compose.prod.yml` + `.env.prod.example`，文档 `docs/deployment.md`；开发态 JWT 占位密钥改为 `${HOSPITAL_JWT_SECRET:占位}` 可覆写。前端引入 vitest（`npm run test`，覆盖 permissions / token-storage / entity-page 表单工具），`pnpm-lock.yaml` 入库。新增 `.github/workflows/ci.yml`：后端 TestContainers 全量测试 + 前端 lint/test/build。
+
 - **代码优化清理（2026-06-10）**：V54 删除 `file_metadata` 表，整个磁盘文件存储模块 `com.hospital.file`（`/api/v1/files`）下线（前端统一走 `/api/v1/photos` 数据库存储）；移除 `/api/v1/bingli` 兼容路由及 `bingli:*` 授权回退（权限码已在 V50 期清空）；dictionary 模块改用 `common.PageResponse`（删除重复定义）。visits / followups / medical-records 三个增长型模块的列表从「全量加载 + 内存切片」改为数据库分页（SQL `LIMIT/OFFSET` + `COUNT`），响应结构不变。前端 `EntityManagementPage` 机械拆分出 `entity-page/`（types / modal / detail-value / 共用表单字段渲染器），公共类型仍从原路径导出。补齐 RBAC / 家医签约 / 慢病随访 / 科室四个模块的集成测试（TestContainers，CI 运行）。
 
 - **模块串联（2026-06-10）**：V51 打通核心业务链 —— `doctor_profile.department_id`（医生归属科室）、`visit_record.doctor_id`（挂号选医生，前端按科室联动过滤）、`medical_record.visit_id`（病历挂接就诊，就诊列表「写病历」直达预填）；病历保存按处方明细自动扣减药品库存并写 `medication_inventory_log`（库存不足 409 回滚，删病历返还库存）。V52 给 RECEPTION 角色补发工作权限（挂号/患者读写 + 医生/科室/签约/随访只读）。新增 `GET /api/v1/dashboard/summary` 按权限裁剪的首页聚合指标。签约到期自动显示 EXPIRED（查询期换算 + 建约时惰性落库）。

@@ -47,7 +47,15 @@ Integration tests spin up a real PostgreSQL container via TestContainers — the
 npm run dev    # dev server
 npm run build  # production build
 npm run lint   # ESLint
+npm run test   # vitest unit tests (lib/ + entity-page helpers)
 ```
+
+The lockfile is `pnpm-lock.yaml` (committed); CI and the web Dockerfile use pnpm.
+
+### CI / Deployment
+
+- `.github/workflows/ci.yml` — backend `mvn test` (TestContainers works on GitHub runners) + web lint/test/build, on push to main and PRs.
+- Production: `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build` — see `docs/deployment.md`. Secrets (DB password, `HOSPITAL_JWT_SECRET`) have **no defaults** in `application-prod.yml`; missing env vars fail startup.
 
 ## Architecture
 
@@ -68,6 +76,7 @@ dto/          Request/response DTOs
 Cross-cutting:
 - `com.hospital.config.SecurityConfig` — Spring Security + JWT filter chain
 - `com.hospital.auth.security.JwtService` / `JwtAuthenticationFilter` — JWT issuance and validation
+- `com.hospital.auth.security.LoginAttemptService` — login brute-force throttle (username+IP, 5 failures → 15 min lock → HTTP 429; in-memory, single-instance only; tune via `security.login-throttle.*`)
 - `com.hospital.common.ApiExceptionHandler` — global `@ControllerAdvice` error handling, returns `ApiErrorResponse`
 - `com.hospital.observability` — `TraceIdFilter` injects `X-Trace-Id` on every request; `ApiMetricsFilter` records timing
 - `com.hospital.audit.AuditService` — used by Dictionary module to log mutations
