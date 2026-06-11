@@ -38,8 +38,14 @@ spring:
 
 security:
   jwt:
-    secret: replace-with-a-32-byte-minimum-secret-key
+    # 开发占位密钥。生产以 prod profile 启动时改由 HOSPITAL_JWT_SECRET 强制注入
+    # （application-prod.yml 中无默认值，缺失即启动失败），不会带着占位符上线。
+    secret: ${HOSPITAL_JWT_SECRET:replace-with-a-32-byte-minimum-secret-key}
     access-token-ttl: 8h
+  # 登录失败限流（按 用户名+来源IP 计数，内存实现，单实例有效）
+  login-throttle:
+    max-attempts: 5
+    lock-duration: 15m
 
 management:
   endpoints:

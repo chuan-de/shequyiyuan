@@ -36,6 +36,14 @@ public class ApiExceptionHandler {
             .body(Map.of("message", "Validation failed"));
     }
 
+    @ExceptionHandler(com.hospital.auth.security.TooManyLoginAttemptsException.class)
+    public ResponseEntity<Map<String, Object>> handleLoginThrottle(
+            com.hospital.auth.security.TooManyLoginAttemptsException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+            .body(Map.of("message", ex.getMessage()));
+    }
+
     @ExceptionHandler(AiRateLimitException.class)
     public ResponseEntity<Map<String, Object>> handleAiRateLimit(AiRateLimitException ex) {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)

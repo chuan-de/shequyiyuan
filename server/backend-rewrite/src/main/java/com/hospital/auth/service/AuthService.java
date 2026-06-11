@@ -6,6 +6,8 @@ import com.hospital.auth.dto.LoginRequest;
 import com.hospital.auth.dto.RegisterRequest;
 import com.hospital.auth.security.JwtProperties;
 import com.hospital.auth.security.JwtService;
+import com.hospital.auth.security.LoginAttemptService;
+import com.hospital.auth.security.TooManyLoginAttemptsException;
 import com.hospital.user.service.AuthUserDetailsService;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -14,6 +16,7 @@ import java.util.Set;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,7 @@ public class AuthService implements UserAccountService {
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
     private final JdbcClient jdbcClient;
+    private final LoginAttemptService loginAttemptService;
 
     public AuthService(
         AuthenticationManager authenticationManager,
@@ -35,7 +39,8 @@ public class AuthService implements UserAccountService {
         PasswordEncoder passwordEncoder,
         JwtService jwtService,
         JwtProperties jwtProperties,
-        JdbcClient jdbcClient
+        JdbcClient jdbcClient,
+        LoginAttemptService loginAttemptService
     ) {
         this.authenticationManager = authenticationManager;
         this.authUserDetailsService = authUserDetailsService;
@@ -43,12 +48,23 @@ public class AuthService implements UserAccountService {
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
         this.jdbcClient = jdbcClient;
+        this.loginAttemptService = loginAttemptService;
     }
 
-    public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.username(), request.password())
-        );
+    public AuthResponse login(LoginRequest request, String clientIp) {
+        long blockedSeconds = loginAttemptService.blockedForSeconds(request.username(), clientIp);
+        if (blockedSeconds > 0) {
+            throw new TooManyLoginAttemptsException(blockedSeconds);
+        }
+        try {
+            authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.username(), request.password())
+            );
+        } catch (AuthenticationException e) {
+            loginAttemptService.recordFailure(request.username(), clientIp);
+            throw e;
+        }
+        loginAttemptService.recordSuccess(request.username(), clientIp);
 
         UserDetails userDetails = authUserDetailsService.loadUserByUsername(request.username());
         String roleCode = userDetails.getAuthorities().stream()
