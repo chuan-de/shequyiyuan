@@ -1,0 +1,29 @@
+# 生产 profile：SPRING_PROFILES_ACTIVE=prod 时叠加在 application.yml 之上。
+# 约定：凡是机密（数据库口令、JWT 密钥、AI key）一律没有默认值，
+# 环境变量缺失直接启动失败（fail-fast），杜绝占位符混入生产。
+spring:
+  datasource:
+    # 默认指向 docker-compose.prod.yml 里的服务名
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/hospital}
+    username: ${SPRING_DATASOURCE_USERNAME:hospital}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+security:
+  jwt:
+    # 必须 ≥ 32 字节；生成方式见 docs/deployment.md
+    secret: ${HOSPITAL_JWT_SECRET}
+
+server:
+  port: 8080
+
+management:
+  endpoint:
+    health:
+      show-details: never
+
+hospital:
+  ai:
+    # 生产默认关闭 AI；提供 HOSPITAL_AI_API_KEY 后置 HOSPITAL_AI_ENABLED=true 开启
+    enabled: ${HOSPITAL_AI_ENABLED:false}
+  qdrant:
+    host: ${HOSPITAL_QDRANT_HOST:qdrant}

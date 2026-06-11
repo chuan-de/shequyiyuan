@@ -1,7 +1,6 @@
 # Node dependencies
 node_modules/
 web/node_modules/
-web/pnpm-lock.yaml
 .idea/
 
 # Next.js build output
@@ -27,6 +26,9 @@ pnpm-debug.log*
 *.key
 .env
 .env.*
+# 示例文件不含机密，需要入库
+!.env.prod.example
+!web/.env.example
 **/HOSPITAL_API_KEY
 **/application-local.yml
 **/application-secret.yml
